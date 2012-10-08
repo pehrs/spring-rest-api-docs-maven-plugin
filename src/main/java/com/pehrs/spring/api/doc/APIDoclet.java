@@ -99,12 +99,13 @@ public class APIDoclet {
 
 								String methodUrl = getStrippedElementValue(
 										methodReqMapDoc, "value");
+								log.debug("methodUrl="+methodUrl);
 								if (methodUrl == null) {
 									methodUrl = "";
 								}
 								log.debug("  METHOD: " + methodDoc.name() + " "
-										+ urlRoot + methodUrl + "  "
-										+ reqMethod);
+										+ "urlRoot="+urlRoot + ", methodUrl="+methodUrl
+										+ "  "+ reqMethod);
 								MethodDesc method = new MethodDesc();
 								controller.addMethod(method);
 								method.setName(methodDoc.name());
@@ -389,7 +390,9 @@ public class APIDoclet {
 	}
 
 	private static String getElementValue(AnnotationDesc desc, String key) {
-		return "" + getElementAnnotationValue(desc, key);
+		AnnotationValue val = getElementAnnotationValue(desc, key);
+		if(val!=null) return ""+val;
+		return null;
 	}
 
 	private static AnnotationValue getElementAnnotationValue(
@@ -408,7 +411,10 @@ public class APIDoclet {
 
 	private static String getStrippedElementValue(AnnotationDesc desc,
 			String key) {
+		log.debug("getStrippedElementValue() desc="+desc+", key="+key);
+
 		String tmp = getElementValue(desc, key);
+		log.debug("  tmp='"+tmp+"'");
 		if (tmp == null) {
 			return null;
 		}
