@@ -100,7 +100,7 @@ public class MVNMojo extends AbstractMojo {
 	 * @readonly
 	 */
 	private Artifact pluginArtifact;
-	
+
 	/**
 	 * The logging level for the code generation
 	 * 
@@ -108,6 +108,7 @@ public class MVNMojo extends AbstractMojo {
 	 */
 	private String loggingLevel = "Info";
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		getLog().info("EXECUTE");
@@ -115,15 +116,19 @@ public class MVNMojo extends AbstractMojo {
 		getLog().info("artifactId=" + project.getArtifactId());
 		getLog().info("version=" + project.getVersion());
 		getLog().info("srcDir=" + project.getBuild().getSourceDirectory());
+		getLog().info("compile.source.roots=" + project.getCompileSourceRoots());
 		getLog().info("pkgRoot=" + pkgRoot);
 
 		String localRepoPath = getLocalRepoPath();
 		String pluginClasspath = getPluginClasspath(localRepoPath);
 
-		File pkgDir = new File(project.getBuild().getSourceDirectory() + "/"
-				+ pkgRoot.replace('.', '/'));
-		SortedSet<String> pkgs = getPackagesFromDirs(pkgDir, pkgRoot, pkgDir);
-		pkgs.add(pkgRoot);
+		SortedSet<String> pkgs = new TreeSet<String>();
+		for (String srcPath : (List<String>)project.getCompileSourceRoots()) {
+			File pkgDir = new File(srcPath
+					+ "/" + pkgRoot.replace('.', '/'));
+			pkgs.addAll(getPackagesFromDirs(pkgDir, pkgRoot, pkgDir));
+			pkgs.add(pkgRoot);
+		}
 		for (String pkg : pkgs) {
 			getLog().info("Package: " + pkg);
 		}
@@ -174,38 +179,40 @@ public class MVNMojo extends AbstractMojo {
 
 		getLog().debug("Setting up compile classpath...");
 		StringBuilder classpath = new StringBuilder();
-		
+
 		// Setup the target/classes dir
 		classpath.append(this.project.getBuild().getOutputDirectory());
-		
-		for(Artifact provided:getProvidedArtifacts(project)) {
-			getLog().debug("provided.artifact="+provided);	
+
+		for (Artifact provided : getProvidedArtifacts(project)) {
+			getLog().debug("provided.artifact=" + provided);
 			File file = provided.getFile();
-			if(file!=null) {
+			if (file != null) {
 				if (classpath.length() > 0) {
 					classpath.append(":");
 				}
 				classpath.append(file.getAbsolutePath());
 			} else {
 				// Try to find the jar in the local repo anyways...
-				
+
 				// javax.servlet:servlet-api:jar:2.5:provided
 				// getLocalRepoPath();
 				// javax/servlet/servlet-api/2.5/servlet-api-2.5.jar
-				
-				File path = new File(getLocalRepoPath()+"/"+provided.getGroupId().replace('.', '/')+"/"
-						+provided.getArtifactId()+"/"+provided.getVersion()+"/"
-						+provided.getArtifactId()+"-"+provided.getVersion()+"."+provided.getType());
-				getLog().debug("path="+path);
+
+				File path = new File(getLocalRepoPath() + "/"
+						+ provided.getGroupId().replace('.', '/') + "/"
+						+ provided.getArtifactId() + "/"
+						+ provided.getVersion() + "/"
+						+ provided.getArtifactId() + "-"
+						+ provided.getVersion() + "." + provided.getType());
+				getLog().debug("path=" + path);
 				if (classpath.length() > 0) {
 					classpath.append(":");
 				}
-				classpath.append(path.getAbsolutePath());				
+				classpath.append(path.getAbsolutePath());
 			}
-			
-			
+
 		}
-		
+
 		try {
 			@SuppressWarnings("rawtypes")
 			List classPathElements = project.getRuntimeClasspathElements();
@@ -234,7 +241,8 @@ public class MVNMojo extends AbstractMojo {
 		}
 
 		String theClasspath = classpath.toString();
-		runJavaDoc(project.getBuild().getSourceDirectory(), pkgs, theClasspath,
+		runJavaDoc((List<String>)project.getCompileSourceRoots(), 
+				pkgs, theClasspath,
 				pluginClasspath, typeSamplesFile);
 	}
 
@@ -278,7 +286,7 @@ public class MVNMojo extends AbstractMojo {
 		return result;
 	}
 
-	private void runJavaDoc(String srcPath, Set<String> pkgs, String classpath,
+	private void runJavaDoc(List<String> srcPath, Set<String> pkgs, String classpath,
 			String docletpath, File typeSamplesFile) {
 		// javadoc
 		// -J-Dtype.samples=/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../etc/typeSamples.conf
@@ -302,10 +310,12 @@ public class MVNMojo extends AbstractMojo {
 		for (Object pluginObj : project.getPluginArtifacts()) {
 			DefaultArtifact plugin = (DefaultArtifact) pluginObj;
 			try {
-				getLog().debug("plugin=" + plugin.getGroupId() + ":"
-						+ plugin.getArtifactId());
-				getLog().debug(" plugin.selectedVersion="
-						+ plugin.getSelectedVersion());
+				getLog().debug(
+						"plugin=" + plugin.getGroupId() + ":"
+								+ plugin.getArtifactId());
+				getLog().debug(
+						" plugin.selectedVersion="
+								+ plugin.getSelectedVersion());
 				if (plugin.getGroupId().equals("com.pehrs")
 						&& plugin.getArtifactId().equals(
 								"spring-rest-api-docs-maven-plugin")) {
@@ -350,7 +360,7 @@ public class MVNMojo extends AbstractMojo {
 		cmd.add("-J-Xmx1280m");
 		cmd.add("-J-XX:PermSize=256M");
 		cmd.add("-J-XX:MaxPermSize=512M");
-		
+
 		cmd.add("-J-Dlogging.level=" + loggingLevel);
 		cmd.add("-J-Dtarget=" + targetDir);
 		cmd.add("-J-Dpom.group.id=" + project.getGroupId());
@@ -358,7 +368,15 @@ public class MVNMojo extends AbstractMojo {
 		cmd.add("-J-Dpom.name=" + project.getName());
 		cmd.add("-J-Dpom.version=" + project.getVersion());
 		cmd.add("-sourcepath");
-		cmd.add(srcPath);
+		
+		StringBuilder srcp = new StringBuilder();
+		for(String sp:srcPath) {
+			if(srcp.length()>0) {
+				srcp.append(":");
+			}
+			srcp.append(sp);
+		}		
+		cmd.add(srcp.toString());
 		cmd.add("-doclet");
 		cmd.add("com.pehrs.spring.api.doc.APIDoclet");
 		cmd.add("-classpath");
@@ -442,14 +460,15 @@ public class MVNMojo extends AbstractMojo {
 				"provided");
 		return provided;
 	}
-	
-	private void copyScopedDependenciesToTarget(Set dependencyArtifacts, List<Artifact> targetArtifacts, String scope) {
-        for (Object dependencyArtifact : dependencyArtifacts) {
-            Artifact artifact = (Artifact) dependencyArtifact;
 
-            if (artifact.getScope().equals(scope)) {
-                targetArtifacts.add(artifact);
-            }
-        }
-    }
+	private void copyScopedDependenciesToTarget(Set dependencyArtifacts,
+			List<Artifact> targetArtifacts, String scope) {
+		for (Object dependencyArtifact : dependencyArtifacts) {
+			Artifact artifact = (Artifact) dependencyArtifact;
+
+			if (artifact.getScope().equals(scope)) {
+				targetArtifacts.add(artifact);
+			}
+		}
+	}
 }

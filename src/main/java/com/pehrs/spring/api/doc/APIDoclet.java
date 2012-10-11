@@ -58,12 +58,12 @@ public class APIDoclet {
 			AnnotationDesc controllerDoc = getControllerAnnotation(classDoc);
 			// AnnotationDesc reqMapDoc = getReqeustMappingAnnotation(classDoc);
 			if (controllerDoc != null) {
-				log.debug("CLASS: " + classDoc.name());
+				log.info("\n  from class " + classDoc.qualifiedName());
 
 				ClassDesc controller = new ClassDesc();
 				controller.setName(classDoc.name());
 				controller.setPkgName(classDoc.containingPackage().name());
-				model.put(classDoc.name(), controller);
+				model.put(classDoc.qualifiedName(), controller);
 
 				log.debug("  controller: " + controllerDoc);
 				// xml.append(ODTGenerator.odfBody(classDoc.qualifiedName()));
@@ -103,9 +103,7 @@ public class APIDoclet {
 								if (methodUrl == null) {
 									methodUrl = "";
 								}
-								log.debug("  METHOD: " + methodDoc.name() + " "
-										+ "urlRoot="+urlRoot + ", methodUrl="+methodUrl
-										+ "  "+ reqMethod);
+								log.info("    " + reqMethod+" "+urlRoot+methodUrl+" => "+methodDoc.name()+"()");
 								MethodDesc method = new MethodDesc();
 								controller.addMethod(method);
 								method.setName(methodDoc.name());
@@ -119,8 +117,7 @@ public class APIDoclet {
 										.parameters();
 
 								@SuppressWarnings("rawtypes")
-								Class methodReturnType = classMethod
-										.getReturnType();
+								Class methodReturnType = classMethod.getReturnType();
 
 								java.lang.reflect.Type retType = classMethod
 										.getGenericReturnType();
@@ -370,10 +367,12 @@ public class APIDoclet {
 
 	@SuppressWarnings("rawtypes")
 	private static Method getMethod(ClassDoc classDoc, MethodDoc methodDoc) {
+		log.debug("getMethod("+classDoc.name()+", "+methodDoc.name()+")");
 		try {
 			Class klass = Class.forName(classDoc.qualifiedName());
 
 			for (Method method : klass.getMethods()) {
+				log.debug("getMethod() method.name="+method.getName()+" methodDoc.name="+methodDoc.name());
 				if (methodDoc.name().equals(method.getName())) {
 					if (method.getParameterTypes().length == methodDoc
 							.parameters().length) {
@@ -381,7 +380,7 @@ public class APIDoclet {
 					}
 				}
 			}
-
+			log.warn("Class "+classDoc.name()+" method for '"+methodDoc.name()+"' not found");
 			return null;
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
@@ -557,6 +556,7 @@ public class APIDoclet {
 
 			TreeSet<PathInfo> paths = new TreeSet<PathInfo>();
 			for (ClassDesc controller : model.values()) {
+				log.info("\nGenerating HTML for Controller "+controller.getName());
 				String urlRoot = controller.getUrlRoot();
 				for (MethodDesc method : controller.getMethods()) {
 					String requestPath = urlRoot
@@ -578,6 +578,7 @@ public class APIDoclet {
 				}
 			}
 			datamodel.put("paths", paths.iterator());
+			log.debug("    paths="+paths);
 
 			String path = targetDir.getAbsolutePath() + "/"
 					+ datamodel.get("pom_group_id") + "."

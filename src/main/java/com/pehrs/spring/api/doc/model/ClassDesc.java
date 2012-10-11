@@ -172,8 +172,7 @@ public class ClassDesc implements Comparable<ClassDesc>{
 	}
 
 	public String getJSId() {
-		// return getPkgName().replace('.', '_') +"_"+getName();
-		return getName();
+		return getPkgName().replace('.', '_') +"_"+getName();
 	}
 	
 	
