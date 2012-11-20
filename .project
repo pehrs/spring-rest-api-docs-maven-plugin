@@ -1,6 +1,6 @@
 <projectDescription>
   <name>spring-rest-api-docs-maven-plugin</name>
-  <comment>NO_M2ECLIPSE_SUPPORT: Project files created with the maven-eclipse-plugin are not supported in M2Eclipse.</comment>
+  <comment>This plugin generates documentation for SpringFramework JSON REST Controllers by using javadoc. NO_M2ECLIPSE_SUPPORT: Project files created with the maven-eclipse-plugin are not supported in M2Eclipse.</comment>
   <projects/>
   <buildSpec>
     <buildCommand>

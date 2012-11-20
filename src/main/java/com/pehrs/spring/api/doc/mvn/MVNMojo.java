@@ -54,6 +54,13 @@ public class MVNMojo extends AbstractMojo {
 	 * @required
 	 */
 	private String pkgRoot;
+	
+	/**
+	 * URL prefix for the REST services
+	 * 
+	 * @parameter
+	 */
+	private String urlPrefix = "";
 
 	/**
 	 * The targets to generate
@@ -367,6 +374,7 @@ public class MVNMojo extends AbstractMojo {
 		cmd.add("-J-Dpom.artifact.id=" + project.getArtifactId());
 		cmd.add("-J-Dpom.name=" + project.getName());
 		cmd.add("-J-Dpom.version=" + project.getVersion());
+		cmd.add("-J-Durl.prefix="+urlPrefix);
 		cmd.add("-sourcepath");
 		
 		StringBuilder srcp = new StringBuilder();

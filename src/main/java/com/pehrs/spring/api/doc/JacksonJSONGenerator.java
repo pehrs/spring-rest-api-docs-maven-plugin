@@ -3,8 +3,10 @@ package com.pehrs.spring.api.doc;
 import java.io.IOException;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 
@@ -16,9 +18,12 @@ public class JacksonJSONGenerator {
 		
 		try {
 			Object instance = parameterClass.newInstance();
+						
 			
 			ObjectMapper mapper = new ObjectMapper();			
-			ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
+			mapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
+			ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter();
+			// ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
 			
 			return writer.writeValueAsString(instance);			
 			

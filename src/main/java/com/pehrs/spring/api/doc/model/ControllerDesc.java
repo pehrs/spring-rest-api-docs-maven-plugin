@@ -6,7 +6,13 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-public class ClassDesc implements Comparable<ClassDesc>{
+/**
+ * Holds the info about the Spring MVS REST Controller
+ * 
+ * @author matti
+ *
+ */
+public class ControllerDesc implements Comparable<ControllerDesc>{
 
 	String name;
 	String pkgName;
@@ -63,7 +69,17 @@ public class ClassDesc implements Comparable<ClassDesc>{
 		else this.comment = comment;
 	}
 
-	
+	public String getCommentTextFirstSentence() {
+		if(comment==null) {
+			return "";
+		}
+		int index = comment.indexOf('@');
+		if(index!=-1) {
+			return comment.substring(0, index + 1);
+		}
+		return comment;
+	}
+
 	public String getPkgName() {
 		return pkgName;
 	}
@@ -129,7 +145,7 @@ public class ClassDesc implements Comparable<ClassDesc>{
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		ClassDesc other = (ClassDesc) obj;
+		ControllerDesc other = (ControllerDesc) obj;
 		if (comment == null) {
 			if (other.comment != null)
 				return false;
@@ -159,7 +175,7 @@ public class ClassDesc implements Comparable<ClassDesc>{
 	}
 
 	@Override
-	public int compareTo(ClassDesc other) {
+	public int compareTo(ControllerDesc other) {
 		String cmp = name;
 		if(pkgName!=null) {
 			cmp = pkgName+name;

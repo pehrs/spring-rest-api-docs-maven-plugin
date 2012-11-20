@@ -382,7 +382,7 @@ public class JSONSampleGenerator {
 		if (propertyClass.isEnum()) {
 
 			Object[] consts = propertyClass.getEnumConstants();
-			return "" + consts[0];
+			return "\"" + consts[0]+"\"";
 
 		}
 

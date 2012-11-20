@@ -14,15 +14,17 @@ import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.pehrs.spring.api.doc.model.ClassDesc;
+import com.pehrs.spring.api.doc.model.ControllerDesc;
 import com.pehrs.spring.api.doc.model.MethodDesc;
 import com.pehrs.spring.api.doc.model.ParameterDesc;
 import com.pehrs.spring.api.doc.model.PathInfo;
+import com.pehrs.spring.api.doc.model.PkgDesc;
 import com.sun.javadoc.AnnotationDesc;
 import com.sun.javadoc.AnnotationDesc.ElementValuePair;
 import com.sun.javadoc.AnnotationValue;
 import com.sun.javadoc.ClassDoc;
 import com.sun.javadoc.MethodDoc;
+import com.sun.javadoc.PackageDoc;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.ProgramElementDoc;
 import com.sun.javadoc.RootDoc;
@@ -42,6 +44,8 @@ public class APIDoclet {
 	final static String CONTROLLER_TEMPLATE_FILE = "controller.ftl";
 	final static String API_TEMPLATE_FILE = "api.ftl";
 
+	static String urlPrefix = System.getProperty("url.prefix", "");
+
 	public static boolean start(RootDoc root) {
 
 		initLogging();
@@ -50,7 +54,8 @@ public class APIDoclet {
 		JSONSampleGenerator jsonGenerator = new JSONSampleGenerator(
 				new JSONTextDecorator());
 
-		Map<String, ClassDesc> model = new HashMap<String, ClassDesc>();
+		Map<String, ControllerDesc> model = new HashMap<String, ControllerDesc>();
+		Map<String, PkgDesc> packages = new HashMap<String, PkgDesc>();
 
 		ClassDoc[] classes = root.classes();
 		for (ClassDoc classDoc : classes) {
@@ -60,10 +65,20 @@ public class APIDoclet {
 			if (controllerDoc != null) {
 				log.info("\n  from class " + classDoc.qualifiedName());
 
-				ClassDesc controller = new ClassDesc();
+				ControllerDesc controller = new ControllerDesc();
 				controller.setName(classDoc.name());
 				controller.setPkgName(classDoc.containingPackage().name());
 				model.put(classDoc.qualifiedName(), controller);
+
+				PackageDoc pkgDoc = classDoc.containingPackage();
+				String pkgName = pkgDoc.name();
+				PkgDesc pkg = packages.get(pkgName);
+				if (pkg == null) {
+					pkg = new PkgDesc();
+					pkg.setName(pkgName);
+					packages.put(pkgName, pkg);
+				}
+				pkg.addController(controller);
 
 				log.debug("  controller: " + controllerDoc);
 				// xml.append(ODTGenerator.odfBody(classDoc.qualifiedName()));
@@ -82,7 +97,7 @@ public class APIDoclet {
 				}
 
 				log.debug("  url.root=" + urlRoot);
-				controller.setUrlRoot(urlRoot);
+				controller.setUrlRoot(urlPrefix + urlRoot);
 
 				for (MethodDoc methodDoc : classDoc.methods()) {
 					AnnotationDesc methodReqMapDoc = getReqeustMappingAnnotation(methodDoc);
@@ -99,16 +114,20 @@ public class APIDoclet {
 
 								String methodUrl = getStrippedElementValue(
 										methodReqMapDoc, "value");
-								log.debug("methodUrl="+methodUrl);
+								log.debug("methodUrl=" + methodUrl);
 								if (methodUrl == null) {
 									methodUrl = "";
 								}
-								log.info("    " + reqMethod+" "+urlRoot+methodUrl+" => "+methodDoc.name()+"()");
+
+								log.info("    " + reqMethod + " " + urlRoot
+										+ methodUrl + " => " + methodDoc.name()
+										+ "()");
 								MethodDesc method = new MethodDesc();
 								controller.addMethod(method);
 								method.setName(methodDoc.name());
 								method.setRequestMappingUrl(methodUrl);
 								method.setRequestMappingMethod(reqMethod);
+								method.setAnnotations(methodDoc.annotations());
 
 								// Get Parameter Types
 								Method classMethod = getMethod(classDoc,
@@ -117,7 +136,8 @@ public class APIDoclet {
 										.parameters();
 
 								@SuppressWarnings("rawtypes")
-								Class methodReturnType = classMethod.getReturnType();
+								Class methodReturnType = classMethod
+										.getReturnType();
 
 								java.lang.reflect.Type retType = classMethod
 										.getGenericReturnType();
@@ -273,7 +293,7 @@ public class APIDoclet {
 		}
 
 		log.debug("============================");
-		log.debug("" + model);
+		log.debug("" + packages);
 		log.debug("============================");
 
 		// Generate result
@@ -294,6 +314,7 @@ public class APIDoclet {
 			 */
 
 			Map<String, Object> datamodel = new HashMap<String, Object>();
+			datamodel.put("packageMap", packages);
 			datamodel.put("model", model);
 			datamodel.put("pom_group_id",
 					System.getProperty("pom.group.id", ""));
@@ -367,12 +388,14 @@ public class APIDoclet {
 
 	@SuppressWarnings("rawtypes")
 	private static Method getMethod(ClassDoc classDoc, MethodDoc methodDoc) {
-		log.debug("getMethod("+classDoc.name()+", "+methodDoc.name()+")");
+		log.debug("getMethod(" + classDoc.name() + ", " + methodDoc.name()
+				+ ")");
 		try {
 			Class klass = Class.forName(classDoc.qualifiedName());
 
 			for (Method method : klass.getMethods()) {
-				log.debug("getMethod() method.name="+method.getName()+" methodDoc.name="+methodDoc.name());
+				log.debug("getMethod() method.name=" + method.getName()
+						+ " methodDoc.name=" + methodDoc.name());
 				if (methodDoc.name().equals(method.getName())) {
 					if (method.getParameterTypes().length == methodDoc
 							.parameters().length) {
@@ -380,7 +403,8 @@ public class APIDoclet {
 					}
 				}
 			}
-			log.warn("Class "+classDoc.name()+" method for '"+methodDoc.name()+"' not found");
+			log.warn("Class " + classDoc.name() + " method for '"
+					+ methodDoc.name() + "' not found");
 			return null;
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
@@ -390,7 +414,8 @@ public class APIDoclet {
 
 	private static String getElementValue(AnnotationDesc desc, String key) {
 		AnnotationValue val = getElementAnnotationValue(desc, key);
-		if(val!=null) return ""+val;
+		if (val != null)
+			return "" + val;
 		return null;
 	}
 
@@ -410,10 +435,10 @@ public class APIDoclet {
 
 	private static String getStrippedElementValue(AnnotationDesc desc,
 			String key) {
-		log.debug("getStrippedElementValue() desc="+desc+", key="+key);
+		log.debug("getStrippedElementValue() desc=" + desc + ", key=" + key);
 
 		String tmp = getElementValue(desc, key);
-		log.debug("  tmp='"+tmp+"'");
+		log.debug("  tmp='" + tmp + "'");
 		if (tmp == null) {
 			return null;
 		}
@@ -502,7 +527,8 @@ public class APIDoclet {
 
 		FileWriter out = null;
 		try {
-			ClassDesc controller = (ClassDesc) datamodel.get("controller");
+			ControllerDesc controller = (ControllerDesc) datamodel
+					.get("controller");
 
 			String pkgPath = controller.getPkgName().replace('.', '/');
 
@@ -545,18 +571,24 @@ public class APIDoclet {
 
 		FileWriter out = null;
 		try {
-			Map<String, ClassDesc> model = (Map<String, ClassDesc>) datamodel
-					.get("model");
 
-			TreeSet<ClassDesc> sortedControllers = new TreeSet<ClassDesc>(
+			Map<String,PkgDesc> packages = (Map<String, PkgDesc>) datamodel.get("packageMap");
+			TreeSet<PkgDesc> sortedPkgs = new TreeSet<PkgDesc>(
+					packages.values());
+			datamodel.put("packages", sortedPkgs.iterator());
+
+			Map<String, ControllerDesc> model = (Map<String, ControllerDesc>) datamodel
+					.get("model");
+			TreeSet<ControllerDesc> sortedControllers = new TreeSet<ControllerDesc>(
 					model.values());
 			datamodel.put("controllers", sortedControllers.iterator());
 
 			// api_${method.getRequestMappingMethod()}_${method.getName()}
 
 			TreeSet<PathInfo> paths = new TreeSet<PathInfo>();
-			for (ClassDesc controller : model.values()) {
-				log.info("\nGenerating HTML for Controller "+controller.getName());
+			for (ControllerDesc controller : model.values()) {
+				log.info("\nGenerating HTML for Controller "
+						+ controller.getName());
 				String urlRoot = controller.getUrlRoot();
 				for (MethodDesc method : controller.getMethods()) {
 					String requestPath = urlRoot
@@ -577,8 +609,9 @@ public class APIDoclet {
 					log.debug("PATH: " + info);
 				}
 			}
+
 			datamodel.put("paths", paths.iterator());
-			log.debug("    paths="+paths);
+			log.debug("    paths=" + paths);
 
 			String path = targetDir.getAbsolutePath() + "/"
 					+ datamodel.get("pom_group_id") + "."

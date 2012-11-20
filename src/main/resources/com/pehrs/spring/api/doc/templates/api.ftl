@@ -74,6 +74,10 @@
       }
 
       h2 {
+      font-size: 24px;
+      }
+
+      h3 {
       font-size: 18px;
       }
 
@@ -204,11 +208,11 @@ margin-top: 4px;
 }
 
 .logo {
-      color: #000;
+      color: #fff;
       font-size: 36px;
       font-weight: bold;
       /* text-shadow: 1px 1px #888; */
-      text-shadow: #fff 0.05em 3px 0.4em;
+      text-shadow: #00f 0.05em 3px 0.4em;
 }
 
 .link {
@@ -257,15 +261,23 @@ margin-top: 4px;
       -->
       
       
-      <#foreach controller in controllers>
-	
+      <#foreach pkg in packages>
 	<div class="row">
 	  <div class="span12">
+	    <div class="row">
+	      <div class="span12">
+		<div>
+		  <h2>${pkg.getName()}</h2>
+		</div>
+	      </div>
+	    </div>
+	    <#foreach controller in pkg.getControllerIterator()>
+	      
 	    
 	    <div class="row">
 	      <div class="span12">
 		<div class="service-header">
-		  <span onClick="$('#${controller.getJSId()}').toggle('slow');" class="link url">${controller.getPathInfoRoot()}</span><span onClick="$('#${controller.getJSId()}').toggle('slow');" class="link pull-right">${controller.getComment()}</span>
+		  <span onClick="$('#${controller.getJSId()}').toggle('slow');" class="link url">${controller.getPathInfoRoot()}</span><span onClick="$('#${controller.getJSId()}').toggle('slow');" class="link pull-right">${controller.getCommentTextFirstSentence()}</span>
 		</div>
 	      </div>
 	    </div>
@@ -276,20 +288,32 @@ margin-top: 4px;
 		
 		<div class="row">
 		  <div class="span12">
-		    <div class="service service-${path.getRequestMethod()}"><button onClick="$('#${path.getMethodId()}').toggle('slow');" style="width: 80px;" class="btn ${path.getBootstrapRequestMethodBtnStyle()} service-rest-method">${path.getRequestMethod()}</button><span class="service-url">${path.getRequestPath()}</span><span class="service-title service-title-${path.getRequestMethod()} pull-right">${path.getMethod().getCommentTextFirstSentence()}</span></div>
+		    <div class="service service-${path.getRequestMethod()}">
+		      <button onClick="$('#${path.getMethodId()}').toggle('slow');" style="width: 80px;" class="btn ${path.getBootstrapRequestMethodBtnStyle()} service-rest-method">${path.getRequestMethod()}</button>
+		      <span class="service-url">${path.getRequestPath()}</span>
+		      <span class="service-title service-title-${path.getRequestMethod()} pull-right">${path.getMethod().getCommentTextFirstSentence()}</span>
+		    </div>
 		  </div>
 		</div>
 		<div class="row">
 		  <div class="span12">
 		    <div id="${path.getMethodId()}" class="service-details service-${path.getRequestMethod()}">
+
 		      <p>${path.getMethod().getCommentTextWithNoAnnotations()}</p>
+
+		      <h3>Annotations</h3>
+		      <pre class="prettyprint lang-js">
+		      <#foreach ann in path.getMethod().getAnnotations()>
+${ann}
+		      </#foreach>
+		      </pre>
 		      
 		      <table class="json">
 
 			<#if path.getMethod().hasPathVariables()>
 			  <tr>
 			    <td >
-			      <h2>Path Variables</h2>
+			      <h3>Path Variables</h3>
 			    </td>
 			  </tr>
 			  <tr>
@@ -312,7 +336,7 @@ margin-top: 4px;
 			<#if path.getMethod().hasRequestParameters()>
 			  <tr>
 			    <td >
-			      <h2>Request Parameters</h2>
+			      <h3>Request Parameters</h3>
 			    </td>
 			  </tr>
 			  <tr>
@@ -343,7 +367,7 @@ margin-top: 4px;
 			<#if path.getMethod().hasRequestBodyParameter()>
 			  <tr>
 			    <td >
-			      <h2>Request Body Sample</h2>
+			      <h3>Request Body Sample</h3>
 			    </td>
 			  </tr>
 			  <tr>
@@ -358,7 +382,7 @@ margin-top: 4px;
 			
 			<tr>
 			  <td >
-			    <h2>Response Body Sample</h2>
+			    <h3>Response Body Sample</h3>
 			  </td>
 			</tr>
 			<tr>
@@ -381,11 +405,13 @@ margin-top: 4px;
 		
 	      </div>
 	    </div>
+
+	    </#foreach> <!-- end of controllers -->
 	    
 	  </div>
 	</div>
 	
-      </#foreach>
+      </#foreach>  <!-- end of packages -->
       
     </div> <!-- end of container -->
       

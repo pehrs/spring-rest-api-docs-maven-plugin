@@ -1,5 +1,11 @@
 package com.pehrs.spring.api.doc.model;
 
+/**
+ * Parameter info
+ * 
+ * @author matti
+ *
+ */
 public class ParameterDesc {
 
 	String name;

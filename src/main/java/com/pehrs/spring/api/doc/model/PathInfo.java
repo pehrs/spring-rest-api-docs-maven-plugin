@@ -2,14 +2,14 @@ package com.pehrs.spring.api.doc.model;
 
 
 public class PathInfo implements Comparable<PathInfo>{
-	private final ClassDesc controller;
+	private final ControllerDesc controller;
 	public final MethodDesc method;
 	public final String requestPath;
 	public final String requestMethod;
 	public final String controllerPath;
 	public final String methodId;
 	
-	public PathInfo(ClassDesc controller, MethodDesc method, String requestPath, String requestMethod,
+	public PathInfo(ControllerDesc controller, MethodDesc method, String requestPath, String requestMethod,
 			String controllerPath, String methodId) {
 		super();
 		this.controller = controller;
