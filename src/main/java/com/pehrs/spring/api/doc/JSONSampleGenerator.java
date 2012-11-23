@@ -358,20 +358,20 @@ public class JSONSampleGenerator {
 		}
 
 		if (propertyClass == Boolean.class || propertyClass == Boolean.TYPE) {
-			return "true";
+			return "\"true\"";
 		}
 
 		if (propertyClass == Integer.TYPE || propertyClass == Integer.class
 				|| propertyClass == Long.class || propertyClass == Long.TYPE
 				|| propertyClass == Short.class || propertyClass == Short.TYPE
 				|| propertyClass == BigInteger.class) {
-			return "42";
+			return "\"42\"";
 		}
 
 		if (propertyClass == Double.class || propertyClass == Double.TYPE
 				|| propertyClass == Float.class || propertyClass == Float.TYPE
 				|| propertyClass == BigDecimal.class) {
-			return "42.42";
+			return "\"42.42\"";
 		}
 
 		if (propertyClass == Date.class || propertyClass == java.sql.Date.class
