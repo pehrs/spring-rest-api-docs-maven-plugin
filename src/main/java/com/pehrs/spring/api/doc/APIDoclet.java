@@ -7,10 +7,9 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +18,7 @@ import com.pehrs.spring.api.doc.model.MethodDesc;
 import com.pehrs.spring.api.doc.model.ParameterDesc;
 import com.pehrs.spring.api.doc.model.PathInfo;
 import com.pehrs.spring.api.doc.model.PkgDesc;
+import com.pehrs.spring.api.doc.v2.LogUtils;
 import com.sun.javadoc.AnnotationDesc;
 import com.sun.javadoc.AnnotationDesc.ElementValuePair;
 import com.sun.javadoc.AnnotationValue;
@@ -46,19 +46,26 @@ public class APIDoclet {
 
 	static String urlPrefix = System.getProperty("url.prefix", "");
 
+	static String excludePatternRegex = System.getProperty("exclude.pattern");
+	static Pattern excludePattern = null;
+
 	public static boolean start(RootDoc root) {
 
-		initLogging();
+		LogUtils.initLogging();
 
-		// JacksonJSONGenerator jsonGenerator = new JacksonJSONGenerator();
 		JSONSampleGenerator jsonGenerator = new JSONSampleGenerator(
 				new JSONTextDecorator());
-
+		
 		Map<String, ControllerDesc> model = new HashMap<String, ControllerDesc>();
 		Map<String, PkgDesc> packages = new HashMap<String, PkgDesc>();
 
 		ClassDoc[] classes = root.classes();
 		for (ClassDoc classDoc : classes) {
+			
+			if(!shouldWeProcess(classDoc)) {
+				log.info("IGnoring class "+classDoc.containingPackage().name()+"."+classDoc.name());
+				continue;
+			}
 
 			AnnotationDesc controllerDoc = getControllerAnnotation(classDoc);
 			// AnnotationDesc reqMapDoc = getReqeustMappingAnnotation(classDoc);
@@ -150,6 +157,7 @@ public class APIDoclet {
 								String methodReturnTypeJson = jsonGenerator
 										.generateJSONSample(methodReturnType,
 												retType);
+								// String methodReturnTypeJson = ObjectValueGenerator.class2JSONSample(methodReturnType);
 								log.debug("      JSON Response Sample:\n"
 										+ methodReturnTypeJson);
 								method.setResponseJSONSample(methodReturnTypeJson);
@@ -254,6 +262,7 @@ public class APIDoclet {
 														parameterClass,
 														parameterClass
 																.getGenericSuperclass());
+										//String json = ObjectValueGenerator.class2JSONSample(parameterClass);;
 										log.debug("      JSON Request Sample:\n"
 												+ json);
 
@@ -331,6 +340,23 @@ public class APIDoclet {
 		return true;
 	}
 
+	private static boolean shouldWeProcess(ClassDoc classDoc) {
+		
+		if(excludePatternRegex==null || excludePatternRegex.length()==0) {
+			return true;
+		}
+		
+		if(excludePattern == null) {
+			excludePattern = Pattern.compile(excludePatternRegex);
+		}
+		
+		String fqcn = classDoc.containingPackage().name()+"."+classDoc.name();
+		log.debug("FQCN: "+fqcn);	
+		Matcher matcher = excludePattern.matcher(fqcn);
+		
+		return !matcher.matches();
+	}
+
 	private static String getHttpMethodName(String reqMethod) {
 		if (reqMethod
 				.equals("org.springframework.web.bind.annotation.RequestMethod.GET")) {
@@ -361,16 +387,6 @@ public class APIDoclet {
 			return "TRACE";
 		}
 		return "GET";
-	}
-
-	private static void initLogging() {
-		org.apache.log4j.Logger root = org.apache.log4j.Logger.getRootLogger();
-		Level level = Level.toLevel(System.getProperty("logging.level", ""
-				+ Level.DEBUG));
-		root.setLevel(level);
-		root.removeAllAppenders();
-		root.addAppender(new ConsoleAppender(new PatternLayout(
-				PatternLayout.DEFAULT_CONVERSION_PATTERN)));
 	}
 
 	@SuppressWarnings("rawtypes")

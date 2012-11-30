@@ -61,6 +61,14 @@ public class MVNMojo extends AbstractMojo {
 	 * @parameter
 	 */
 	private String urlPrefix = "";
+	
+	/**
+	 * Regex pattern for classes to exclude
+	 * 
+	 * @parameter
+	 */
+	private String excludePattern = "";	
+	
 
 	/**
 	 * The targets to generate
@@ -91,6 +99,20 @@ public class MVNMojo extends AbstractMojo {
 	 * @parameter
 	 */
 	private String targetDir = null;
+
+	/**
+	 * Configuration with the preconfigured values for the samples
+	 * 
+	 * @parameter
+	 */
+	private String preconfigValues = null;
+
+	/**
+	 * jackson samples
+	 * 
+	 * @parameter
+	 */
+	private String jacksonSampleValues = null;
 
 	/** @parameter default-value="${localRepository}" */
 	private ArtifactRepository localRepository;
@@ -375,6 +397,9 @@ public class MVNMojo extends AbstractMojo {
 		cmd.add("-J-Dpom.name=" + project.getName());
 		cmd.add("-J-Dpom.version=" + project.getVersion());
 		cmd.add("-J-Durl.prefix="+urlPrefix);
+		cmd.add("-J-Dexclude.pattern="+excludePattern);
+		cmd.add("-J-Dpreconfig.values=tools/preconfig-values.properties");
+		cmd.add("-J-Djackson.values=tools/jackson-values.properties");
 		cmd.add("-sourcepath");
 		
 		StringBuilder srcp = new StringBuilder();
