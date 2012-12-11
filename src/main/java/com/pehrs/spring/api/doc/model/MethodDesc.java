@@ -177,11 +177,16 @@ public class MethodDesc {
 		if(commentText==null) {
 			return "";
 		}
+		String ret = commentText;
 		int index = commentText.indexOf('@');
 		if(index!=-1) {
-			return commentText.substring(0, index + 1);
+			ret = commentText.substring(0, index);
 		}
-		return commentText;
+		index = commentText.indexOf("<br");
+		if(index!=-1) {
+			ret = commentText.substring(0, index);
+		}
+		return ret;
 	}
 
 	public String getCommentTextWithNoAnnotations() {

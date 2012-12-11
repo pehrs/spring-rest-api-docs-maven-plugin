@@ -73,11 +73,16 @@ public class ControllerDesc implements Comparable<ControllerDesc>{
 		if(comment==null) {
 			return "";
 		}
+		String ret = comment;
 		int index = comment.indexOf('@');
 		if(index!=-1) {
-			return comment.substring(0, index + 1);
+			ret = comment.substring(0, index);
 		}
-		return comment;
+		index = comment.indexOf("<br");
+		if(index!=-1) {
+			ret = comment.substring(0, index);
+		}
+		return ret;
 	}
 
 	public String getPkgName() {
