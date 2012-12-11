@@ -273,6 +273,8 @@ public class MVNMojo extends AbstractMojo {
 		runJavaDoc((List<String>)project.getCompileSourceRoots(), 
 				pkgs, theClasspath,
 				pluginClasspath, typeSamplesFile);
+		
+		typeSamplesFile.delete();
 	}
 
 	private String getLocalRepoPath() {

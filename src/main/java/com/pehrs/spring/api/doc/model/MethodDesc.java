@@ -218,6 +218,25 @@ public class MethodDesc {
 		return out.toString();
 	}
 
+	public String getCommentAnnotation(String annotationName) {
+		if(commentText==null) {
+			return "";
+		}
+		try {
+			BufferedReader reader = new BufferedReader(new StringReader(commentText));
+			for(String line = reader.readLine();line!=null;line=reader.readLine()) {
+				line = line.trim();
+				if(line.startsWith("@"+annotationName)) {
+					return line.substring(annotationName.length() + 1).trim();
+				}
+			}
+		} catch (IOException e) {
+			return "";
+		}
+		return "";
+	}
+
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#hashCode()
 	 */

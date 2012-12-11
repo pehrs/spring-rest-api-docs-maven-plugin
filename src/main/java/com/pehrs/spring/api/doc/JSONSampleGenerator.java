@@ -77,7 +77,7 @@ public class JSONSampleGenerator {
 			@SuppressWarnings("rawtypes") Class beanClass, Type beanType) {
 		StringBuilder out = new StringBuilder();
 		generateJSONSample(out, prefix, beanClass, beanType);
-		return out.toString();
+		return out.toString().replace("<", "&lt;").replace(">", "&gt;");
 	}
 
 	@SuppressWarnings({ "rawtypes" })
@@ -90,8 +90,7 @@ public class JSONSampleGenerator {
 
 		String typeSample = typeSamples.getProperty(beanClass.getName());
 		if (typeSample != null) {
-			decorator.text(out, prefix,
-					typeSample + " /* " + beanClass.getName() + "*/");
+			decorator.text(out, "", typeSample.trim() + " /* " + beanClass.getName() + " */");
 			return;
 		}
 
@@ -116,9 +115,11 @@ public class JSONSampleGenerator {
 					&& typeArgs != null) {
 				// System.out.println("COLLECTON TYPE: " + beanClass);
 				decorator.text(out, prefix, "[");
+				out.append("\n");
 				generateJSONSample(out, prefix + "       ",
 						(Class) typeArgs[0], typeArgs[0]);
 				decorator.text(out, prefix, "]");
+				out.append("\n");
 				return;
 			} else {
 
@@ -126,6 +127,7 @@ public class JSONSampleGenerator {
 				BeanInfo info = Introspector.getBeanInfo(beanClass);
 				// System.out.println(prefix + "{");
 				decorator.classHead(out, prefix);
+				int propCount = 0;
 				for (PropertyDescriptor property : info
 						.getPropertyDescriptors()) {
 
@@ -133,29 +135,34 @@ public class JSONSampleGenerator {
 						continue;
 					}
 
-					Method readMethod = property.getReadMethod();
-					if (readMethod != null) {
-						// JsonIgnore ignore =
-						// property.getReadMethod().getAnnotation(JsonIgnore.class);
-						for (Annotation annotation : property.getReadMethod()
-								.getAnnotations()) {
-							if (annotation
-									.annotationType()
-									.getName()
-									.equals("org.codehaus.jackson.annotate.JsonIgnore")) {
-								// Jackson 1 ignore
-								continue;
-							}
-							if (annotation
-									.annotationType()
-									.getName()
-									.equals("com.fasterxml.jackson.annotation.JsonIgnore")) {
-								// Jackson 2 ignore
-								continue;
-							}
-						}
+//					Method readMethod = property.getReadMethod();
+//					if (readMethod != null) {
+//						// JsonIgnore ignore =
+//						// property.getReadMethod().getAnnotation(JsonIgnore.class);
+//						for (Annotation annotation : property.getReadMethod()
+//								.getAnnotations()) {
+//							if (annotation
+//									.annotationType()
+//									.getName()
+//									.equals("org.codehaus.jackson.annotate.JsonIgnore")) {
+//								// Jackson 1 ignore
+//								continue;
+//							}
+//							if (annotation
+//									.annotationType()
+//									.getName()
+//									.equals("com.fasterxml.jackson.annotation.JsonIgnore")) {
+//								// Jackson 2 ignore
+//								continue;
+//							}
+//						}
+//					}
+					if(hasJsonIgonre(property)) {
+						continue;
 					}
 
+					Method readMethod = property.getReadMethod();
+					
 					Class<?> propertyClass = property.getPropertyType();
 					String componentType = null;
 					Type propertyType = null;
@@ -198,7 +205,7 @@ public class JSONSampleGenerator {
 							|| propertyClass == Timestamp.class) {
 
 						if (!isJsonIgnore(property)) {
-
+							if(propCount>0) {out.append(",\n"); }
 							decorator.fundamentalPropertyType(
 									out,
 									prefix,
@@ -206,9 +213,12 @@ public class JSONSampleGenerator {
 									generateSampleData(propertyClass),
 									getPropertyComment(propertyClass,
 											componentType));
+							// Increase the property count
+							propCount++;
 						}
 					} else {
 						if (isCollection(propertyClass)) {
+							if(propCount>0) {out.append(",\n"); }
 							decorator.collectionHead(
 									out,
 									prefix,
@@ -224,7 +234,7 @@ public class JSONSampleGenerator {
 										|| componentClass == Timestamp.class) {
 									decorator
 											.text(out,
-													prefix,
+													"",
 													generateSampleDataArray(componentClass));
 								} else {
 									generateJSONSample(out, prefix + "    ",
@@ -235,20 +245,27 @@ public class JSONSampleGenerator {
 							} catch (ClassNotFoundException e) {
 								e.printStackTrace();
 							}
-							decorator.collectionTail(out, prefix);
+							decorator.collectionTail(out, prefix+"  ");
+							// Increase the property count
+							propCount++;
 						} else {
+							if(propCount>0) {out.append(",\n"); }
 							decorator.propertyHead(out, prefix,
 									property.getName());
 							if (embeddedTypeDecl != null) {
-								decorator.text(out, prefix,
+								decorator.text(out, "",
 										embeddedTypeDecl.toString());
+								out.append("\n");
 							} else {
 								generateJSONSample(out, prefix + "    ",
 										propertyClass, propertyType);
 							}
 							decorator.propertyTail(out, prefix);
+							// Increase the property count
+							propCount++;
 						}
 					}
+					
 				}
 			}
 			decorator.classTail(out, prefix);
@@ -256,6 +273,32 @@ public class JSONSampleGenerator {
 		} catch (IntrospectionException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private boolean hasJsonIgonre(PropertyDescriptor property) {
+		Method readMethod = property.getReadMethod();
+		if (readMethod != null) {
+			// JsonIgnore ignore =
+			// property.getReadMethod().getAnnotation(JsonIgnore.class);
+			for (Annotation annotation : property.getReadMethod()
+					.getAnnotations()) {
+				if (annotation
+						.annotationType()
+						.getName()
+						.equals("org.codehaus.jackson.annotate.JsonIgnore")) {
+					// Jackson 1 ignore
+					return true;
+				}
+				if (annotation
+						.annotationType()
+						.getName()
+						.equals("com.fasterxml.jackson.annotation.JsonIgnore")) {
+					// Jackson 2 ignore
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private boolean isJsonIgnore(PropertyDescriptor property) {

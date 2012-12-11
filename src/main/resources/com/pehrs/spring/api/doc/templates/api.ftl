@@ -373,7 +373,7 @@ ${ann}
 			  <tr>
 			    <td >
 			      <pre class="prettyprint lang-js">
-				${path.getMethod().getRequestJSONSample()}
+${path.getMethod().getRequestJSONSample()}
 			      </pre>
 			    </td>
 			  </tr>
@@ -387,8 +387,9 @@ ${ann}
 			</tr>
 			<tr>
 			  <td >
+			    <p style="font-weight: normal;">${path.getMethod().getCommentAnnotation("return")}</p>
 			    <pre class="prettyprint lang-js">
-			      ${path.getMethod().getResponseJSONSample()}
+${path.getMethod().getResponseJSONSample()}
 			    </pre>
 			  </td>
 			</tr>
