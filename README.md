@@ -3,6 +3,8 @@
 
 # spring-rest-api-docs-maven-plugin
 
+NOTE: __This is not a finished utility. It is still work-in-progress__
+
 This is a plugin for Maven 2 that uses javadoc and freemarker to generate documentation for SpringFramework MVC Controllers that are used for JSON REST Services.
 
 # Example
@@ -10,9 +12,6 @@ This is a plugin for Maven 2 that uses javadoc and freemarker to generate docume
 Here's a sample Spring Controller:
 <!--  linenums -->
 <pre class="prettyprint java">
-
-@Controller
-public class AssignmentController {
 
 /**
  * The ACL JSON Rest Controller
