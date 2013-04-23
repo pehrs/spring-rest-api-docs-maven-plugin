@@ -1,158 +1,156 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project 
-    xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  
-  <groupId>com.pehrs</groupId>
-  <artifactId>spring-rest-api-docs-maven-plugin</artifactId>
-  <packaging>maven-plugin</packaging>
-  <version>1.0.0</version>
-  
-  <name>Documentation Generator for Spring JSON Rest APIs</name>
-  <description>This plugin generates documentation for SpringFramework JSON REST Controllers by using javadoc</description>
-  
-  <url>http://github.com/pehrs/spring-rest-api-docs-maven-plugin</url>
-  
-  <licenses>
-    <license>
-      <name>The Apache Software License, Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-  
-  <scm>
-    <connection>scm:git:git@github.com:pehrs/spring-rest-api-docs-maven-plugin.git</connection>
-    <url>scm:git:git@github.com:pehrs/spring-rest-api-docs-maven-plugin.git</url>
-    <developerConnection>scm:git:git@github.com:pehrs/spring-rest-api-docs-maven-plugin.git</developerConnection>
-  </scm>
-  
-  <properties>
-    <env>${user.name}</env>
-    <log4j.version>1.2.17</log4j.version>
-    <slf4j.version>1.6.6</slf4j.version>
-    
-    <freemarker.version>2.3.19</freemarker.version>
-    
-    <jackson-core.version>2.0.5</jackson-core.version>
-    <jackson-databind.version>2.0.5</jackson-databind.version>
-    
-    <joda-time.version>2.1</joda-time.version>
-  </properties>
-  
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-core</artifactId>
-      <version>2.1.0</version>
-    </dependency>
-    
-    <dependency>
-      <groupId>commons-beanutils</groupId>
-      <artifactId>commons-beanutils-core</artifactId>
-      <version>1.8.3</version>
-    </dependency>
-    
-    <dependency>
-      <groupId>org.beanshell</groupId>
-      <artifactId>bsh</artifactId>
-      <version>2.0b5</version>
-    </dependency>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-    <!--
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-lang3</artifactId>
-      <version>3.1</version>
-    </dependency>
-    -->
+	<groupId>com.pehrs</groupId>
+	<artifactId>spring-rest-api-docs-maven-plugin</artifactId>
+	<packaging>maven-plugin</packaging>
+	<version>1.0.0</version>
 
-    <dependency>
-      <groupId>joda-time</groupId>
-      <artifactId>joda-time</artifactId>
-      <version>${joda-time.version}</version>
-    </dependency>
-    
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-plugin-api</artifactId>
-      <version>2.0</version>
-    </dependency>
+	<name>Documentation Generator for Spring JSON Rest APIs</name>
+	<description>This plugin generates documentation for SpringFramework JSON REST Controllers by using javadoc</description>
 
-    <dependency>
-      <groupId>com.sun</groupId>
-      <artifactId>tools</artifactId>
-      <version>1.4.2</version>
-      <scope>system</scope>
-      <systemPath>${java.home}/../lib/tools.jar</systemPath>
-    </dependency>
+	<url>http://github.com/pehrs/spring-rest-api-docs-maven-plugin</url>
 
-    <dependency>
-      <groupId>org.freemarker</groupId>
-      <artifactId>freemarker</artifactId>
-      <version>${freemarker.version}</version>
-    </dependency>
+	<licenses>
+		<license>
+			<name>The Apache Software License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
 
-    <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-      <version>${log4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <version>${slf4j.version}</version>
-    </dependency>
+	<scm>
+		<connection>scm:git:git@github.com:pehrs/spring-rest-api-docs-maven-plugin.git</connection>
+		<url>scm:git:git@github.com:pehrs/spring-rest-api-docs-maven-plugin.git</url>
+		<developerConnection>scm:git:git@github.com:pehrs/spring-rest-api-docs-maven-plugin.git</developerConnection>
+	</scm>
 
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-core</artifactId>
-      <version>${jackson-core.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-      <version>${jackson-databind.version}</version>
-    </dependency>
+	<properties>
+		<env>${user.name}</env>
+		<log4j.version>1.2.17</log4j.version>
+		<slf4j.version>1.6.6</slf4j.version>
 
-  </dependencies>
+		<freemarker.version>2.3.19</freemarker.version>
 
-  <build>
-    <plugins>
-      <plugin>
-	<groupId>org.apache.maven.plugins</groupId>
-	<artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>	
-	<configuration>
-	  <source>1.6</source>
-	  <target>1.6</target>
-	</configuration>
-      </plugin>
-      
-      <!--
-      <plugin>
-	<groupId>org.apache.maven.plugins</groupId>
-	<artifactId>maven-dependency-plugin</artifactId>
-	<configuration>
-	  <outputDirectory>
-            ${project.build.directory}/lib
-	  </outputDirectory>
-	</configuration>
-	<executions>
-	  <execution>
-	    <id>install</id>
-	    <phase>install</phase>
-	    <goals>
-	      <goal>sources</goal>
-	    </goals>
-	  </execution>
-	</executions>
-      </plugin>
-      -->
-      
-    </plugins>
-  </build>
-  
+		<jackson-core.version>2.0.5</jackson-core.version>
+		<jackson-databind.version>2.0.5</jackson-databind.version>
+
+		<joda-time.version>2.1</joda-time.version>
+
+		<!-- testing -->
+		<junit.version>4.7</junit.version>
+		
+		<podam.version>3.0.2.RELEASE</podam.version>
+
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>uk.co.jemos.podam</groupId>
+			<artifactId>podam</artifactId>
+			<version>${podam.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-core</artifactId>
+			<version>2.1.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>commons-beanutils</groupId>
+			<artifactId>commons-beanutils-core</artifactId>
+			<version>1.8.3</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.beanshell</groupId>
+			<artifactId>bsh</artifactId>
+			<version>2.0b5</version>
+		</dependency>
+
+		<!-- <dependency> <groupId>org.apache.commons</groupId> <artifactId>commons-lang3</artifactId> 
+			<version>3.1</version> </dependency> -->
+
+		<dependency>
+			<groupId>joda-time</groupId>
+			<artifactId>joda-time</artifactId>
+			<version>${joda-time.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-plugin-api</artifactId>
+			<version>2.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.sun</groupId>
+			<artifactId>tools</artifactId>
+			<version>1.4.2</version>
+			<scope>system</scope>
+			<systemPath>${java.home}/../lib/tools.jar</systemPath>
+		</dependency>
+
+		<dependency>
+			<groupId>org.freemarker</groupId>
+			<artifactId>freemarker</artifactId>
+			<version>${freemarker.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<version>${log4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>${jackson-core.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson-databind.version}</version>
+		</dependency>
+
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>${junit.version}</version>
+		</dependency>
+
+
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>2.3.2</version>
+				<configuration>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+			</plugin>
+
+			<!-- <plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-dependency-plugin</artifactId> 
+				<configuration> <outputDirectory> ${project.build.directory}/lib </outputDirectory> 
+				</configuration> <executions> <execution> <id>install</id> <phase>install</phase> 
+				<goals> <goal>sources</goal> </goals> </execution> </executions> </plugin> -->
+
+		</plugins>
+	</build>
+
 
 </project>

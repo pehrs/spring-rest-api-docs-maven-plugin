@@ -1,5 +1,6 @@
-package com.pehrs.spring.api.doc;
+package com.pehrs.spring.api.doc.json;
 
+@Deprecated
 public class JSONTextDecorator implements JSONDecorator {
 
 	@Override

@@ -1,4 +1,4 @@
-package com.pehrs.spring.api.doc.v2;
+package com.pehrs.spring.api.doc;
 
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;

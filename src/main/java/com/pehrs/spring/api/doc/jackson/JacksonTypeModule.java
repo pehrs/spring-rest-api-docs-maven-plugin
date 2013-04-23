@@ -1,4 +1,4 @@
-package com.pehrs.spring.api.doc.v2.jackson;
+package com.pehrs.spring.api.doc.jackson;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -10,24 +10,26 @@ import java.util.Properties;
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.Version;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleDeserializers;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.module.SimpleSerializers;
 
 public class JacksonTypeModule extends SimpleModule {
 	
+
 	private static final Logger log = Logger.getLogger(JacksonTypeModule.class);
-	
-	private static Version version = new Version(1, 0, 0, "SNAPSHOT", "com.pehrs.json", "pehrs-module");
-	
+
+	private static Version version = new Version(1, 0, 0, "SNAPSHOT",
+			"com.pehrs.json", "pehrs-module");
+
 	public JacksonTypeModule() {
 		super("PehrsJsonModule", version);
 	}
 
-	
 	private static Map<Class<?>, String> preconfigValues = null;
-
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -63,12 +65,29 @@ public class JacksonTypeModule extends SimpleModule {
 			for(Object key:props.keySet()) {
 				Class<?> theClass;
 				try {
-					theClass = Class.forName(""+key);
+					if("byte".equals(key)) {
+						theClass = byte.class;
+					} else if("short".equals(key)) {
+						theClass = short.class;
+					} else if("int".equals(key)) {
+						theClass = int.class;
+					} else if("long".equals(key)) {
+						theClass = long.class;
+					} else if("float".equals(key)) {
+						theClass = float.class;
+					} else if("double".equals(key)) {
+						theClass = double.class;
+					} else if("boolean".equals(key)) {
+						theClass = boolean.class;
+					} else if("char".equals(key)) {
+						theClass = char.class; 
+					} else {
+						theClass = Class.forName(""+key);
+					}
 				} catch (ClassNotFoundException e) {
 					throw new RuntimeException(e);
 				}
 				String val = props.getProperty(""+key);
-				log.debug("["+theClass.getName()+"]="+val);
 				preconfigValues.put(theClass, val);
 			}
 		}
@@ -88,5 +107,4 @@ public class JacksonTypeModule extends SimpleModule {
          context.addDeserializers(deserializers);
 
 	}
-
 }

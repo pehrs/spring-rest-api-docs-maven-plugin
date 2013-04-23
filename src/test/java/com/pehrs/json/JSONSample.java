@@ -1,15 +1,13 @@
-package com.pehrs.spring.api.doc.v2;
+package com.pehrs.json;
 
 import java.beans.BeanDescriptor;
 import java.beans.PropertyDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
@@ -21,25 +19,32 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.beanutils.PropertyUtils;
-import org.apache.log4j.Logger;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.log4j.PatternLayout;
 import org.joda.time.DateTime;
 
 import bsh.EvalError;
 import bsh.Interpreter;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.pehrs.spring.api.doc.v2.jackson.JacksonTypeModule;
+import com.pehrs.spring.api.doc.jackson.JacksonTypeModule;
 
-import edu.emory.mathcs.backport.java.util.Arrays;
+public class JSONSample {
 
-public class ObjectValueGenerator {
-	
-	private final static Logger log = Logger.getLogger(ObjectValueGenerator.class);
+	private static void initLogging() {
+		org.apache.log4j.Logger root = org.apache.log4j.Logger.getRootLogger();
+		Level level = Level.toLevel(System.getProperty("logging.level", ""
+				+ Level.DEBUG));
+		root.setLevel(level);
+		root.removeAllAppenders();
+		root.addAppender(new ConsoleAppender(new PatternLayout(
+				PatternLayout.DEFAULT_CONVERSION_PATTERN)));
+	}
 
 	/**
 	 * @param args
@@ -51,17 +56,13 @@ public class ObjectValueGenerator {
 	public static void main(String[] args) throws ClassNotFoundException,
 			JsonGenerationException, JsonMappingException, IOException {
 
-		LogUtils.initLogging();
+		initLogging();
 		
 		System.setProperty("jackson.values", "jackson-values-sample.properties");
 		System.setProperty("preconfig.values", "preconfig-values-sample.properties");
 
-		Class<?> beanClass = Class.forName("com.pehrs.json.model.SampleClassWithDetails");
-		System.out.println("JSON:\n" + class2JSONSample(beanClass));
-
-	}
-	
-	public static String class2JSONSample(Class<?> beanClass) {
+		Class<?> beanClass = Class
+				.forName("com.pehrs.json.model.SampleClassWithDetails");
 		Object value = generateValue(beanClass);
 
 		System.out.println("value=" + value);
@@ -71,39 +72,35 @@ public class ObjectValueGenerator {
 		mapper.registerModule(new JacksonTypeModule());
 
 		ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter();
-		
-		try {
-			return writer.writeValueAsString(value);
-		} catch (JsonGenerationException e) {
-			throw new RuntimeException(e);
-		} catch (JsonMappingException e) {
-			throw new RuntimeException(e);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		// System.out.println(df.toString());
+		System.out.println("JSON:\n" + writer.writeValueAsString(value));
+
 	}
 
-	public static Object generateValue(String className) throws ClassNotFoundException {
-		
-		Class beanClass = Class.forName(className);
-		
-		return generateValue(beanClass, null);
-	}
-	public static Object generateValue(Class<?> beanClass) {
+	private static Object generateValue(Class<?> beanClass) {
 		return generateValue(beanClass, null);
 	}
 		
 	private static Object generateValue(Class<?> beanClass, Type propertyType) {
 
 		try {
-			if(beanClass==null) {
-				return null;
-			}
+			
 			Object val = getPreconfigValue(beanClass);
 			if(val!=null) {
 				return val;
 			}
 			
+//			if (propertyType != null && propertyType instanceof ParameterizedType) {
+//				try {
+//					ParameterizedType pt = (ParameterizedType) propertyType;
+//					Type[] typeArgs = pt.getActualTypeArguments();
+//					System.out.println("  CLASS "+beanClass.getSimpleName()+"<"
+//					 + Arrays.toString(typeArgs) + ">");
+//				} catch (Exception e) {
+//					e.printStackTrace();
+//				}
+//			}
+
 			
 			// Collection Types
 			// java.util.List<>
@@ -114,9 +111,6 @@ public class ObjectValueGenerator {
 			// java.util.Set<>
 
 			// java.util.Map
-			if (beanClass.isAssignableFrom(Map.class)) {
-				return generateMap(beanClass, propertyType);
-			}
 
 
 			// Check for basic types
@@ -164,21 +158,9 @@ public class ObjectValueGenerator {
 				String name = property.getName();
 				if (!name.equals("class")) {
 					System.out.println("property[" + name + "]=" + property);
-					
-					if(!hasJsonIgnore(property)) {					
 					// Method writeMethod = property.getWriteMethod();
 					Class<?> propertyClass = property.getPropertyType();
 					Type propType = property.getReadMethod().getGenericReturnType();
-					
-					
-					TypeVariable<?>[] beanClassTypeParams = beanClass.getTypeParameters();
-					if(beanClassTypeParams!=null && beanClassTypeParams.length>0) {
-						System.out.println("----------------> beanClassTypeParams="+Arrays.toString(beanClassTypeParams));
-						System.out.println("----------------> propType="+propType);
-						for(TypeVariable<?> tvar:beanClassTypeParams) {
-							System.out.println("----------------> "+(propType == tvar));
-						}
-					}
 
 					// BeanInfo info = Introspector.getBeanInfo(beanClass);
 					Class<?> ptype = property.getWriteMethod()
@@ -188,7 +170,6 @@ public class ObjectValueGenerator {
 					// writeMethod.invoke(beanClass,
 					// generateValue(propertyClass));
 					PropertyUtils.setProperty(value, name, propValue);
-					}
 				}
 			}
 
@@ -211,49 +192,10 @@ public class ObjectValueGenerator {
 		}
 	}
 
-	private static boolean hasJsonIgnore(PropertyDescriptor property) {
-		
-		for(Annotation annotation:property.getReadMethod().getAnnotations()) {
-			if(annotation instanceof JsonIgnore) {
-				return true;
-			}
-		}
-		for(Annotation annotation:property.getWriteMethod().getAnnotations()) {
-			if(annotation instanceof JsonIgnore) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private static Object generateMap(Class<?> beanClass, Type propertyType) {
-		
-		System.out.println("GENERATE MAP===============> "+beanClass.getName()+" propertyType="+propertyType);
-
-		Class leftElementType = null;
-		Class rightElementType = null;
-		if(propertyType != null && propertyType instanceof ParameterizedType) {
-			ParameterizedType aType = (ParameterizedType) propertyType;
-		    Type[] fieldArgTypes = aType.getActualTypeArguments();
-		    leftElementType = (Class)fieldArgTypes[0]; 
-		    rightElementType = (Class)fieldArgTypes[1]; 
-		}
-
-		Map map = new HashMap();
-
-		Object leftVal = generateValue(leftElementType);
-		Object rightVal = generateValue(rightElementType);
-		
-		map.put(leftVal, rightVal);
-
-		return map;
-	}
-
 	@SuppressWarnings({ "rawtypes" })
 	private static List<?> generateList(Class<?> beanClass, Type propertyType) {
 		
-		System.out.println("GENERATE LIST===============> "+beanClass.getName()+" propertyType="+propertyType);
+		System.out.println("GENERATE LIST===============> "+beanClass.getName());
 
 		Class elementType = null;
 		if(propertyType != null && propertyType instanceof ParameterizedType) {
@@ -398,6 +340,5 @@ public class ObjectValueGenerator {
 		
 		return val;
 	}
-
 
 }

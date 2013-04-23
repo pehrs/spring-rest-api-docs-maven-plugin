@@ -1,4 +1,4 @@
-package com.pehrs.spring.api.doc;
+package com.pehrs.spring.api.doc.json;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -23,6 +23,7 @@ import java.util.Properties;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+@Deprecated
 public class JSONSampleGenerator {
 	// static SimpleDateFormat ISOFMT = new
 	// SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SZ");

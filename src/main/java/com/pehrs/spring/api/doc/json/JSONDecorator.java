@@ -1,5 +1,6 @@
-package com.pehrs.spring.api.doc;
+package com.pehrs.spring.api.doc.json;
 
+@Deprecated
 public interface JSONDecorator {
 
 	public abstract void classComment(StringBuilder out, String prefix, String name);

@@ -1,4 +1,4 @@
-package com.pehrs.spring.api.doc.v2.jackson;
+package com.pehrs.spring.api.doc.jackson;
 
 import java.io.IOException;
 
@@ -15,7 +15,6 @@ public class JodaDateTimeDeserializer extends
 
 	public JodaDateTimeDeserializer() {
 		super(DateTime.class);
-		// TODO Auto-generated constructor stub
 	}
 
 	@Override

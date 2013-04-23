@@ -27,14 +27,13 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.project.MavenProject;
 
-import com.pehrs.spring.api.doc.JSONSampleGenerator;
+import com.pehrs.spring.api.doc.SpringRESTAPIDoclet;
+import com.pehrs.spring.api.doc.json.JSONSampleGenerator;
 
 /**
- * Generate Java Code from MySQL database
- * 
- * You need to run: mvn clean dependency:copy-dependencies before using this
- * maven plugin
- * 
+ * Generate HTML documentation from Spring MVC REST Controller.
+ * This Mojo kicks of javadoc and runs the APIDoclet 
+ *  
  * @requiresDependencyResolution runtime
  * @goal docs
  */
@@ -100,19 +99,6 @@ public class MVNMojo extends AbstractMojo {
 	 */
 	private String targetDir = null;
 
-	/**
-	 * Configuration with the preconfigured values for the samples
-	 * 
-	 * @parameter
-	 */
-	private String preconfigValues = null;
-
-	/**
-	 * jackson samples
-	 * 
-	 * @parameter
-	 */
-	private String jacksonSampleValues = null;
 
 	/** @parameter default-value="${localRepository}" */
 	private ArtifactRepository localRepository;
@@ -151,67 +137,66 @@ public class MVNMojo extends AbstractMojo {
 		String localRepoPath = getLocalRepoPath();
 		String pluginClasspath = getPluginClasspath(localRepoPath);
 
-		SortedSet<String> pkgs = new TreeSet<String>();
-		for (String srcPath : (List<String>)project.getCompileSourceRoots()) {
-			File pkgDir = new File(srcPath
-					+ "/" + pkgRoot.replace('.', '/'));
-			pkgs.addAll(getPackagesFromDirs(pkgDir, pkgRoot, pkgDir));
-			pkgs.add(pkgRoot);
-		}
-		for (String pkg : pkgs) {
-			getLog().info("Package: " + pkg);
-		}
+		SortedSet<String> pkgs = getPackages();
 
-		// Test to see if we have the ininbo classes in the classpath
 
-		// if (templateDir != null) {
-		// getLog().debug("Setting template dir: " + templateDir);
-		// System.setProperty("template.dir", templateDir);
-		// }
-		// System.setProperty("target", targetDir);
-		//
-		// System.setProperty("pom.group.id", project.getGroupId());
-		// System.setProperty("pom.artifact.id", project.getArtifactId());
-		// System.setProperty("pom.name", project.getName());
-		// System.setProperty("pom.version", project.getVersion());
-		// System.setProperty("logging.level", "Debug");
-		// System.setProperty("class.prefix", "");
-		// System.setProperty("class.suffix", "");
-		// System.setProperty("file.ext", ".html");
-
-		File typeSamplesFile = null;
-		if (typeSamples != null) {
-			typeSamplesFile = new File(System.getProperty("java.io.tmpdir")
-					+ "/" + this.getClass().getName() + "-type-samples-"
-					+ System.nanoTime());
-			PrintWriter out = null;
-			try {
-				out = new PrintWriter(new FileWriter(typeSamplesFile));
-				for (String typeSample : typeSamples) {
-					String[] parts = typeSample.split("=");
-					String className = parts[0];
-					String sample = parts[1];
-					getLog().info(
-							"CUSTOM TYPE SAMPLE: " + className + " => "
-									+ sample);
-					JSONSampleGenerator.setTypeSample(className, sample);
-					out.println("" + className + "=" + sample);
-				}
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			} finally {
-				if (out != null) {
-					out.close();
-				}
-			}
-		}
+		File typeSamplesFile = getTypeSamplesFile();
 
 		getLog().debug("Setting up compile classpath...");
-		StringBuilder classpath = new StringBuilder();
+		
+		String theClasspath = buildClasspath();
+		runJavaDoc((List<String>)project.getCompileSourceRoots(), 
+				pkgs, theClasspath,
+				pluginClasspath, typeSamplesFile);
 
+		// Remove the temporary samples file
+		if(typeSamplesFile!=null) {
+			typeSamplesFile.delete();
+		}
+	}
+
+	private String buildClasspath() {
+		StringBuilder classpath = new StringBuilder();
 		// Setup the target/classes dir
 		classpath.append(this.project.getBuild().getOutputDirectory());
 
+		buildClasspath4ProvidedArtifacts(classpath);
+
+		buildClasspath4Runtime(classpath);
+
+		return classpath.toString();
+	}
+
+	private void buildClasspath4Runtime(StringBuilder classpath) {
+		try {
+			@SuppressWarnings("rawtypes")
+			List classPathElements = project.getRuntimeClasspathElements();
+			// List classPathElements = project.getCompileClasspathElements();
+
+			URL[] runtimeUrls = new URL[classPathElements.size()];
+			for (int i = 0; i < classPathElements.size(); i++) {
+				String element = (String) classPathElements.get(i);
+				File file = new File(element);
+				runtimeUrls[i] = file.toURI().toURL();
+				getLog().debug("CLASSPATH URL=" + runtimeUrls[i]);
+
+				if (classpath.length() > 0) {
+					classpath.append(":");
+				}
+				classpath.append(file.getAbsolutePath());
+			}
+			// URLClassLoader newLoader = new URLClassLoader(runtimeUrls,
+			// Thread.currentThread().getContextClassLoader());
+			// Thread.currentThread().setContextClassLoader(newLoader);
+
+		} catch (MalformedURLException e) {
+			getLog().error(e);
+		} catch (DependencyResolutionRequiredException e) {
+			getLog().error(e);
+		}
+	}
+
+	private void buildClasspath4ProvidedArtifacts(StringBuilder classpath) {
 		for (Artifact provided : getProvidedArtifacts(project)) {
 			getLog().debug("provided.artifact=" + provided);
 			File file = provided.getFile();
@@ -241,40 +226,51 @@ public class MVNMojo extends AbstractMojo {
 			}
 
 		}
+	}
 
-		try {
-			@SuppressWarnings("rawtypes")
-			List classPathElements = project.getRuntimeClasspathElements();
-			// List classPathElements = project.getCompileClasspathElements();
-
-			URL[] runtimeUrls = new URL[classPathElements.size()];
-			for (int i = 0; i < classPathElements.size(); i++) {
-				String element = (String) classPathElements.get(i);
-				File file = new File(element);
-				runtimeUrls[i] = file.toURI().toURL();
-				getLog().debug("CLASSPATH URL=" + runtimeUrls[i]);
-
-				if (classpath.length() > 0) {
-					classpath.append(":");
+	private File getTypeSamplesFile() {
+		File typeSamplesFile = null;
+		if (typeSamples != null) {
+			typeSamplesFile = new File(System.getProperty("java.io.tmpdir")
+					+ "/" + this.getClass().getName() + "-type-samples-"
+					+ System.nanoTime());
+			PrintWriter out = null;
+			try {
+				out = new PrintWriter(new FileWriter(typeSamplesFile));
+				for (String typeSample : typeSamples) {
+					String[] parts = typeSample.split("=");
+					String className = parts[0];
+					String sample = parts[1];
+					getLog().info(
+							"CUSTOM TYPE SAMPLE: " + className + " => "
+									+ sample);
+					// JSONSampleGenerator.setTypeSample(className, sample);
+					out.println("" + className + "=" + sample);
 				}
-				classpath.append(file.getAbsolutePath());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			} finally {
+				if (out != null) {
+					out.close();
+				}
 			}
-			// URLClassLoader newLoader = new URLClassLoader(runtimeUrls,
-			// Thread.currentThread().getContextClassLoader());
-			// Thread.currentThread().setContextClassLoader(newLoader);
-
-		} catch (MalformedURLException e) {
-			getLog().error(e);
-		} catch (DependencyResolutionRequiredException e) {
-			getLog().error(e);
 		}
+		return typeSamplesFile;
+	}
 
-		String theClasspath = classpath.toString();
-		runJavaDoc((List<String>)project.getCompileSourceRoots(), 
-				pkgs, theClasspath,
-				pluginClasspath, typeSamplesFile);
-		
-		typeSamplesFile.delete();
+	@SuppressWarnings("unchecked")
+	private SortedSet<String> getPackages() {
+		SortedSet<String> pkgs = new TreeSet<String>();
+		for (String srcPath : (List<String>)project.getCompileSourceRoots()) {
+			File pkgDir = new File(srcPath
+					+ "/" + pkgRoot.replace('.', '/'));
+			pkgs.addAll(getPackagesFromDirs(pkgDir, pkgRoot, pkgDir));
+			pkgs.add(pkgRoot);
+		}
+		for (String pkg : pkgs) {
+			getLog().info("Package: " + pkg);
+		}
+		return pkgs;
 	}
 
 	private String getLocalRepoPath() {
@@ -323,110 +319,51 @@ public class MVNMojo extends AbstractMojo {
 		// -J-Dtype.samples=/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../etc/typeSamples.conf
 		// -J-Dtemplate.dir=/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../templates/
 		// -J-Dtarget=sample-api
-		// -J-Dpom.group.id=com.ininbo
-		// -J-Dpom.artifact.id=ininbo-core -J-Dpom.name=InInBo Backend
+		// -J-Dpom.group.id=com.pehrs
+		// -J-Dpom.artifact.id=pehrs-core
+		// -J-Dpom.name=Sample Backend
 		// -J-Dpom.version=1.0.0-SNAPSHOT
 		// -doclet com.pehrs.spring.api.doc.APIDoclet
 		// -classpath
-		// /media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/classes:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/slf4j-log4j12-1.6.6.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/jackson-core-2.0.5.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/log4j-1.2.17.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/tools.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/freemarker-2.3.19.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/slf4j-api-1.6.6.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/jackson-databind-2.0.5.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/jackson-annotations-2.0.5.jar:/media/DEVELOPMENT/ininbo/src/ws/iibser/target/classes
+		// /media/DEVELOPMENT/.../classes
 		// -docletpath
-		// /media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/classes:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/slf4j-log4j12-1.6.6.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/jackson-core-2.0.5.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/log4j-1.2.17.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/tools.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/freemarker-2.3.19.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/slf4j-api-1.6.6.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/jackson-databind-2.0.5.jar:/media/DEVELOPMENT/pehrs.com/src/spring-rest-api-docs-maven-plugin/bin/../target/lib/jackson-annotations-2.0.5.jar:/media/DEVELOPMENT/ininbo/src/ws/iibser/target/classes
-		// -sourcepath /media/DEVELOPMENT/ininbo/src/ws/iibser/src/main/java
-		// com.ininbo.ws.rest com.ininbo.ws.rest.util
-		// com.ininbo.ws.rest.controller
-		// com.ininbo.ws.rest.controller.file
-		// com.ininbo.ws.rest.controller.core
-		// com.ininbo.ws.rest.controller.content
+		// /media/DEVELOPMENT/.../classes
+		// -sourcepath /path/to/src/main/java
+		// com.pehrs.sample.ws.rest 
+		// com.pehrs.sample.ws.rest.controller
 
-		for (Object pluginObj : project.getPluginArtifacts()) {
-			DefaultArtifact plugin = (DefaultArtifact) pluginObj;
-			try {
-				getLog().debug(
-						"plugin=" + plugin.getGroupId() + ":"
-								+ plugin.getArtifactId());
-				getLog().debug(
-						" plugin.selectedVersion="
-								+ plugin.getSelectedVersion());
-				if (plugin.getGroupId().equals("com.pehrs")
-						&& plugin.getArtifactId().equals(
-								"spring-rest-api-docs-maven-plugin")) {
+//		for (Object pluginObj : project.getPluginArtifacts()) {
+//			DefaultArtifact plugin = (DefaultArtifact) pluginObj;
+//			try {
+//				getLog().debug(
+//						"plugin=" + plugin.getGroupId() + ":"
+//								+ plugin.getArtifactId());
+//				getLog().debug(
+//						" plugin.selectedVersion="
+//								+ plugin.getSelectedVersion());
+//				if (plugin.getGroupId().equals("com.pehrs")
+//						&& plugin.getArtifactId().equals(
+//								"spring-rest-api-docs-maven-plugin")) {
+//
+//					ArtifactFilter filter = plugin.getDependencyFilter();
+//					getLog().debug("  filter=" + filter);
+//
+//				}
+//			} catch (OverConstrainedVersionException e) {
+//				e.printStackTrace();
+//			}
+//		}
 
-					ArtifactFilter filter = plugin.getDependencyFilter();
-					getLog().debug("  filter=" + filter);
+		// 
+		// Build command line to call javadoc
+		// 
+		String[] cmdarray = buildJavadocCommandLine(srcPath, pkgs, classpath,
+				docletpath, typeSamplesFile);
 
-				}
-			} catch (OverConstrainedVersionException e) {
-				e.printStackTrace();
-			}
-		}
-
-		List<String> cmd = new ArrayList<String>();
-		File javaHome = new File(System.getProperty("java.home"));
-
-		// Check if jre and not jdk
-		File javadocFile = new File(javaHome.getAbsolutePath() + "/bin/javadoc"
-				+ (isWindows() ? ".exe" : ""));
-		if (!javadocFile.exists()) {
-			// Check if JRE within JDK
-			javaHome = javaHome.getParentFile();
-			javadocFile = new File(javaHome.getAbsolutePath() + "/bin/javadoc"
-					+ (isWindows() ? ".exe" : ""));
-			if (!javadocFile.exists()) {
-				throw new RuntimeException("You need to run this within a JDK");
-			}
-		}
-
-		String[] env = { "CLASSPATH=" + classpath, };
-
-		cmd.add(javadocFile.getAbsolutePath());
-		if (templateDir != null) {
-			cmd.add("-J-Dtemplate.dir=" + templateDir);
-		}
-		if (typeSamplesFile != null) {
-			cmd.add("-J-Dtype.samples=" + typeSamplesFile.getAbsolutePath());
-		}
-
-		// FIXME: take these as optional in parameters
-		cmd.add("-J-Xms140m");
-		cmd.add("-J-Xmx1280m");
-		cmd.add("-J-XX:PermSize=256M");
-		cmd.add("-J-XX:MaxPermSize=512M");
-
-		cmd.add("-J-Dlogging.level=" + loggingLevel);
-		cmd.add("-J-Dtarget=" + targetDir);
-		cmd.add("-J-Dpom.group.id=" + project.getGroupId());
-		cmd.add("-J-Dpom.artifact.id=" + project.getArtifactId());
-		cmd.add("-J-Dpom.name=" + project.getName());
-		cmd.add("-J-Dpom.version=" + project.getVersion());
-		cmd.add("-J-Durl.prefix="+urlPrefix);
-		cmd.add("-J-Dexclude.pattern="+excludePattern);
-		cmd.add("-J-Dpreconfig.values=tools/preconfig-values.properties");
-		cmd.add("-J-Djackson.values=tools/jackson-values.properties");
-		cmd.add("-sourcepath");
-		
-		StringBuilder srcp = new StringBuilder();
-		for(String sp:srcPath) {
-			if(srcp.length()>0) {
-				srcp.append(":");
-			}
-			srcp.append(sp);
-		}		
-		cmd.add(srcp.toString());
-		cmd.add("-doclet");
-		cmd.add("com.pehrs.spring.api.doc.APIDoclet");
-		cmd.add("-classpath");
-		cmd.add(classpath);
-		cmd.add("-docletpath");
-		cmd.add(docletpath);
-		cmd.addAll(pkgs);
-
-		getLog().debug("CMD: " + cmd);
-
-		String[] cmdarray = cmd.toArray(new String[0]);
-
-		// com.sun.tools.javadoc.Main.execute(javadocargs);
+		// Execute the javadoc command
 		Runtime rt = Runtime.getRuntime();
 		try {
+			String[] env = { "CLASSPATH=" + classpath, };
 			Process process = rt.exec(cmdarray, env);
 
 			ThreadedStreamReader stdin = new ThreadedStreamReader(
@@ -449,7 +386,76 @@ public class MVNMojo extends AbstractMojo {
 		}
 	}
 
-	public static boolean isWindows() {
+	private String[] buildJavadocCommandLine(List<String> srcPath, Set<String> pkgs,
+			String classpath, String docletpath, File typeSamplesFile) {
+		
+		// Get the path for the javadoc program
+		File javadocFile = getJavaDocPath();
+
+		List<String> cmd = new ArrayList<String>();
+		cmd.add(javadocFile.getAbsolutePath());
+		if (templateDir != null) {
+			cmd.add("-J-Dtemplate.dir=" + templateDir);
+		}
+		if (typeSamplesFile != null) {
+			cmd.add("-J-Djackson.values=" + typeSamplesFile.getAbsolutePath());
+		}
+
+		// FIXME: take these as optional in parameters
+		cmd.add("-J-Xms140m");
+		cmd.add("-J-Xmx1280m");
+		cmd.add("-J-XX:PermSize=256M");
+		cmd.add("-J-XX:MaxPermSize=512M");
+
+		cmd.add("-J-Dlogging.level=" + loggingLevel);
+		cmd.add("-J-Dtarget=" + targetDir);
+		cmd.add("-J-Dpom.group.id=" + project.getGroupId());
+		cmd.add("-J-Dpom.artifact.id=" + project.getArtifactId());
+		cmd.add("-J-Dpom.name=" + project.getName());
+		cmd.add("-J-Dpom.version=" + project.getVersion());
+		cmd.add("-J-Durl.prefix="+urlPrefix);
+		cmd.add("-J-Dexclude.pattern="+excludePattern);
+		cmd.add("-sourcepath");
+		
+		StringBuilder srcp = new StringBuilder();
+		for(String sp:srcPath) {
+			if(srcp.length()>0) {
+				srcp.append(":");
+			}
+			srcp.append(sp);
+		}		
+		cmd.add(srcp.toString());
+		cmd.add("-doclet");
+		cmd.add(SpringRESTAPIDoclet.class.getName());
+		cmd.add("-classpath");
+		cmd.add(classpath);
+		cmd.add("-docletpath");
+		cmd.add(docletpath);
+		cmd.addAll(pkgs);
+
+		getLog().debug("CMD: " + cmd);
+
+		String[] cmdarray = cmd.toArray(new String[0]);
+		return cmdarray;
+	}
+
+	private File getJavaDocPath() {
+		File javaHome = new File(System.getProperty("java.home"));
+		File javadocFile = new File(javaHome.getAbsolutePath() + "/bin/javadoc"
+				+ (isWindows() ? ".exe" : ""));
+		if (!javadocFile.exists()) {
+			// Check if JRE within JDK
+			javaHome = javaHome.getParentFile();
+			javadocFile = new File(javaHome.getAbsolutePath() + "/bin/javadoc"
+					+ (isWindows() ? ".exe" : ""));
+			if (!javadocFile.exists()) {
+				throw new RuntimeException("You need to run this within a JDK");
+			}
+		}
+		return javadocFile;
+	}
+
+	private static boolean isWindows() {
 		String os = System.getProperty("os.name").toLowerCase();
 		// windows
 		return (os.indexOf("win") >= 0);
@@ -488,7 +494,8 @@ public class MVNMojo extends AbstractMojo {
 	}
 
 	private Collection<Artifact> getProvidedArtifacts(MavenProject project) {
-		Set dependencyArtifacts = project.getDependencyArtifacts();
+		@SuppressWarnings("unchecked")
+		Set<Artifact> dependencyArtifacts = (Set<Artifact>)project.getDependencyArtifacts();
 		List<Artifact> provided = new ArrayList<Artifact>();
 
 		copyScopedDependenciesToTarget(dependencyArtifacts, provided,
@@ -496,11 +503,9 @@ public class MVNMojo extends AbstractMojo {
 		return provided;
 	}
 
-	private void copyScopedDependenciesToTarget(Set dependencyArtifacts,
+	private void copyScopedDependenciesToTarget(Set<Artifact> dependencyArtifacts,
 			List<Artifact> targetArtifacts, String scope) {
-		for (Object dependencyArtifact : dependencyArtifacts) {
-			Artifact artifact = (Artifact) dependencyArtifact;
-
+		for (Artifact artifact : dependencyArtifacts) {
 			if (artifact.getScope().equals(scope)) {
 				targetArtifacts.add(artifact);
 			}
