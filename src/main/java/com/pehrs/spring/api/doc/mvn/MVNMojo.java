@@ -20,15 +20,14 @@ import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
-import org.apache.maven.artifact.versioning.OverConstrainedVersionException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.project.MavenProject;
 
+import com.pehrs.spring.api.doc.LogUtils;
 import com.pehrs.spring.api.doc.SpringRESTAPIDoclet;
-import com.pehrs.spring.api.doc.json.JSONSampleGenerator;
+import com.pehrs.spring.api.doc.jackson.JacksonTypeModule;
 
 /**
  * Generate HTML documentation from Spring MVC REST Controller.
@@ -38,6 +37,14 @@ import com.pehrs.spring.api.doc.json.JSONSampleGenerator;
  * @goal docs
  */
 public class MVNMojo extends AbstractMojo {
+
+	private static final String PROVIDED_SCOPE = "provided";
+
+	private static final String SYSARG_OS_NAME = "os.name";
+
+	private static final String SYSARG_JAVA_HOME = "java.home";
+
+	private static final String DEFAULT_LOGGING_LEVEL = "Info";
 
 	/**
 	 * @parameter expression="${project}"
@@ -121,7 +128,7 @@ public class MVNMojo extends AbstractMojo {
 	 * 
 	 * @parameter
 	 */
-	private String loggingLevel = "Info";
+	private String loggingLevel = DEFAULT_LOGGING_LEVEL;
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -140,7 +147,12 @@ public class MVNMojo extends AbstractMojo {
 		SortedSet<String> pkgs = getPackages();
 
 
-		File typeSamplesFile = getTypeSamplesFile();
+		File typeSamplesFile;
+		try {
+			typeSamplesFile = getTypeSamplesFile();
+		} catch (IOException e) {
+			throw new MojoFailureException("Could not create type samples: "+e.getMessage());
+		}
 
 		getLog().debug("Setting up compile classpath...");
 		
@@ -228,12 +240,10 @@ public class MVNMojo extends AbstractMojo {
 		}
 	}
 
-	private File getTypeSamplesFile() {
+	private File getTypeSamplesFile() throws IOException {
 		File typeSamplesFile = null;
 		if (typeSamples != null) {
-			typeSamplesFile = new File(System.getProperty("java.io.tmpdir")
-					+ "/" + this.getClass().getName() + "-type-samples-"
-					+ System.nanoTime());
+			typeSamplesFile = File.createTempFile(this.getClass().getName() + "-type-samples-", ".cfg");
 			PrintWriter out = null;
 			try {
 				out = new PrintWriter(new FileWriter(typeSamplesFile));
@@ -395,10 +405,10 @@ public class MVNMojo extends AbstractMojo {
 		List<String> cmd = new ArrayList<String>();
 		cmd.add(javadocFile.getAbsolutePath());
 		if (templateDir != null) {
-			cmd.add("-J-Dtemplate.dir=" + templateDir);
+			cmd.add("-J-D"+SpringRESTAPIDoclet.SYSARG_TEMPLATE_DIR+"=" + templateDir);
 		}
 		if (typeSamplesFile != null) {
-			cmd.add("-J-Djackson.values=" + typeSamplesFile.getAbsolutePath());
+			cmd.add("-J-D"+JacksonTypeModule.SYSARG_JACKSON_VALUES+"=" + typeSamplesFile.getAbsolutePath());
 		}
 
 		// FIXME: take these as optional in parameters
@@ -407,14 +417,14 @@ public class MVNMojo extends AbstractMojo {
 		cmd.add("-J-XX:PermSize=256M");
 		cmd.add("-J-XX:MaxPermSize=512M");
 
-		cmd.add("-J-Dlogging.level=" + loggingLevel);
-		cmd.add("-J-Dtarget=" + targetDir);
-		cmd.add("-J-Dpom.group.id=" + project.getGroupId());
-		cmd.add("-J-Dpom.artifact.id=" + project.getArtifactId());
-		cmd.add("-J-Dpom.name=" + project.getName());
-		cmd.add("-J-Dpom.version=" + project.getVersion());
-		cmd.add("-J-Durl.prefix="+urlPrefix);
-		cmd.add("-J-Dexclude.pattern="+excludePattern);
+		cmd.add("-J-D"+LogUtils.SYSARG_LOGGING_LEVEL+"=" + loggingLevel);
+		cmd.add("-J-D"+SpringRESTAPIDoclet.SYSARG_TARGET+"=" + targetDir);
+		cmd.add("-J-D"+SpringRESTAPIDoclet.SYSARG_POM_GROUP_ID+"=" + project.getGroupId());
+		cmd.add("-J-D"+SpringRESTAPIDoclet.SYSARG_POM_ARTIFACT_ID+"=" + project.getArtifactId());
+		cmd.add("-J-D"+SpringRESTAPIDoclet.SYSARG_POM_NAME+"=" + project.getName());
+		cmd.add("-J-D"+SpringRESTAPIDoclet.SYSARG_POM_VERSION+"=" + project.getVersion());
+		cmd.add("-J-D"+SpringRESTAPIDoclet.SYSARG_URL_PREFIX+"="+urlPrefix);
+		cmd.add("-J-D"+SpringRESTAPIDoclet.SYSARG_EXCLUDE_PATTERN+"="+excludePattern);
 		cmd.add("-sourcepath");
 		
 		StringBuilder srcp = new StringBuilder();
@@ -440,7 +450,7 @@ public class MVNMojo extends AbstractMojo {
 	}
 
 	private File getJavaDocPath() {
-		File javaHome = new File(System.getProperty("java.home"));
+		File javaHome = new File(System.getProperty(SYSARG_JAVA_HOME));
 		File javadocFile = new File(javaHome.getAbsolutePath() + "/bin/javadoc"
 				+ (isWindows() ? ".exe" : ""));
 		if (!javadocFile.exists()) {
@@ -456,7 +466,7 @@ public class MVNMojo extends AbstractMojo {
 	}
 
 	private static boolean isWindows() {
-		String os = System.getProperty("os.name").toLowerCase();
+		String os = System.getProperty(SYSARG_OS_NAME).toLowerCase();
 		// windows
 		return (os.indexOf("win") >= 0);
 
@@ -499,7 +509,7 @@ public class MVNMojo extends AbstractMojo {
 		List<Artifact> provided = new ArrayList<Artifact>();
 
 		copyScopedDependenciesToTarget(dependencyArtifacts, provided,
-				"provided");
+				PROVIDED_SCOPE);
 		return provided;
 	}
 
