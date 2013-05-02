@@ -41,20 +41,72 @@ import freemarker.template.TemplateException;
 
 public class SpringRESTAPIDoclet {
 
+	private static final String SYSARG_EXCLUDE_PATTERN = "exclude.pattern";
+	private static final String SYSARG_URL_PREFIX = "url.prefix";
+	private static final String SYSARG_POM_VERSION = "pom.version";
+	private static final String SYSARG_POM_NAME = "pom.name";
+	private static final String SYSARG_POM_ARTIFACT_ID = "pom.artifact.id";
+	private static final String SYSARG_POM_GROUP_ID = "pom.group.id";
+	private static final String SYSARG_TARGET = "target";
+	private static final String SYSARG_FILE_EXT = "file.ext";
+	private static final String SYSARG_FILE_EXT_DEFAULT = ".html";
+	private static final String SYSARG_CLASS_SUFFIX = "class.suffix";
+	private static final String SYSARG_CLASS_SUFFIX_DEFAULT = "";
+	private static final String SYSARG_CLASS_PREFIX = "class.prefix";
+	private static final String SYSARG_CLASS_PREFIX_DEFAULT = "";
+	
+	private static final String DATAMODEL_POM_VERSION = "pom_version";
+	private static final String DATAMODEL_POM_ARTIFACT_ID = "pom_artifact_id";
+	private static final String DATAMODEL_POM_GROUP_ID = "pom_group_id";
+	private static final String DATAMODEL_CONTROLLERS = "controllers";
+	private static final String DATAMODEL_MODEL = "model";
+	private static final String DATAMODEL_PACKAGES = "packages";
+	private static final String DATAMODEL_PACKAGE_MAP = "packageMap";
+	private static final String DATAMODEL_CONTROLLER = "controller";
+
+
+	private static final String TEMPLATE_RESOURCE_DIR = "/com/pehrs/spring/api/doc/templates";
+
+	private static final String SYSARG_TEMPLATE_DIR = "template.dir";
+
+	private static final String SPRING_CONTROLLER_ANNOTATION_CLASSNAME = "org.springframework.stereotype.Controller";
+	private static final String SPRING_PATH_VARIABLE_ANNOTATION_CLASSNAME = "org.springframework.web.bind.annotation.PathVariable";
+	private static final String SPRING_REQUEST_ANNOTATION_CLASSNAME = "org.springframework.web.bind.annotation.RequestParam";
+	private static final String SPRING_REQUEST_MAPPING_ANNOTATION_CLASSNAME = "org.springframework.web.bind.annotation.RequestMapping";
+	private static final String SPRING_REQUEST_BODY_ANNOTATION_CLASSNAME = "org.springframework.web.bind.annotation.RequestBody";
+
+	private static final String REQUEST_METHOD_GET = "org.springframework.web.bind.annotation.RequestMethod.GET";
+	private static final String REQUEST_METHOD_TRACE = "org.springframework.web.bind.annotation.RequestMethod.TRACE";
+	private static final String REQUEST_METHOD_OPTIONS = "org.springframework.web.bind.annotation.RequestMethod.OPTIONS";
+	private static final String REQUEST_METHOD_HEAD = "org.springframework.web.bind.annotation.RequestMethod.HEAD";
+	private static final String REQUEST_METHOD_PUT = "org.springframework.web.bind.annotation.RequestMethod.PUT";
+	private static final String REQUEST_METHOD_DELETE = "org.springframework.web.bind.annotation.RequestMethod.DELETE";
+	private static final String REQUEST_METHOD_POST = "org.springframework.web.bind.annotation.RequestMethod.POST";
+
+	private static final String VALUE_ELEMENT_NAME = "value";
+	private static final String DEFAULT_VALUE_ELEMENT_NAME = "defaultValue";
+	private static final String REQUIRED_ELEMENT_NAME = "required";
+
+	private final static String CONTROLLER_TEMPLATE_FILE = "controller.ftl";
+	
+	private final static String API_TEMPLATE_FILE = "api.ftl";
+
+	private static final char SLASH = '/';
+	private static final char DOT = '.';
+
 	static Logger log = LoggerFactory.getLogger(SpringRESTAPIDoclet.class);
 
-	final static String CONTROLLER_TEMPLATE_FILE = "controller.ftl";
-	final static String API_TEMPLATE_FILE = "api.ftl";
 
-	static String urlPrefix = System.getProperty("url.prefix", "");
+	static String urlPrefix = System.getProperty(SYSARG_URL_PREFIX, "");
 
-	static String excludePatternRegex = System.getProperty("exclude.pattern");
+	static String excludePatternRegex = System.getProperty(SYSARG_EXCLUDE_PATTERN);
 	static Pattern excludePattern = null;
 
 	static Map<String, ControllerDesc> model = new HashMap<String, ControllerDesc>();
 	static Map<String, PkgDesc> packages = new HashMap<String, PkgDesc>();
 
-	public static boolean start(RootDoc root) throws JsonGenerationException, JsonMappingException, IOException {
+	public static boolean start(RootDoc root) throws JsonGenerationException,
+			JsonMappingException, IOException {
 
 		LogUtils.initLogging();
 
@@ -62,9 +114,8 @@ public class SpringRESTAPIDoclet {
 		for (ClassDoc classDoc : classes) {
 
 			if (shouldWeProcess(classDoc)) {
-				AnnotationDesc controllerDoc = getControllerAnnotation(classDoc);
-				if (controllerDoc != null) {
-					processClassDoc(classDoc, controllerDoc);
+				if (getControllerAnnotation(classDoc) != null) {
+					processClassDoc(classDoc);
 				}
 			}
 
@@ -76,30 +127,17 @@ public class SpringRESTAPIDoclet {
 
 		// Generate result
 		try {
-			File targetDir = new File(System.getProperty("target"));
+			File targetDir = new File(System.getProperty(SYSARG_TARGET));
 			targetDir.mkdirs();
 
-			/*
-			 * for (ClassDesc controller : model.values()) { Map<String, Object>
-			 * datamodel = new HashMap<String, Object>();
-			 * datamodel.put("controller", controller);
-			 * datamodel.put("pom_group_id", System.getProperty("pom.group.id",
-			 * "")); datamodel.put("pom_artifact_id",
-			 * System.getProperty("pom.artifact.id", ""));
-			 * datamodel.put("pom_name", System.getProperty("pom.name", ""));
-			 * datamodel.put("pom_version", System.getProperty("pom.version",
-			 * "")); fmGenerateAPIHtml4Controller(datamodel, targetDir); }
-			 */
-
 			Map<String, Object> datamodel = new HashMap<String, Object>();
-			datamodel.put("packageMap", packages);
-			datamodel.put("model", model);
-			datamodel.put("pom_group_id",
-					System.getProperty("pom.group.id", ""));
-			datamodel.put("pom_artifact_id",
-					System.getProperty("pom.artifact.id", ""));
-			datamodel.put("pom_name", System.getProperty("pom.name", ""));
-			datamodel.put("pom_version", System.getProperty("pom.version", ""));
+			datamodel.put(DATAMODEL_PACKAGE_MAP, packages);
+			datamodel.put(DATAMODEL_MODEL, model);
+			datamodel.put(DATAMODEL_POM_GROUP_ID, System.getProperty(SYSARG_POM_GROUP_ID, ""));
+			datamodel.put(DATAMODEL_POM_ARTIFACT_ID,
+					System.getProperty(SYSARG_POM_ARTIFACT_ID, ""));
+			datamodel.put("pom_name", System.getProperty(SYSARG_POM_NAME, ""));
+			datamodel.put(DATAMODEL_POM_VERSION, System.getProperty(SYSARG_POM_VERSION, ""));
 			fmGenerateAPIHtml(datamodel, targetDir);
 
 		} finally {
@@ -109,12 +147,11 @@ public class SpringRESTAPIDoclet {
 		return true;
 	}
 
-	private static void processClassDoc(ClassDoc classDoc,
-			AnnotationDesc controllerDoc) throws JsonGenerationException, JsonMappingException, IOException {
+	private static void processClassDoc(ClassDoc classDoc)
+			throws JsonGenerationException, JsonMappingException, IOException {
 
 		// AnnotationDesc reqMapDoc = getReqeustMappingAnnotation(classDoc);
 		log.info("\n  from class " + classDoc.qualifiedName());
-		log.debug("  controller: " + controllerDoc);
 
 		ControllerDesc controller = createControllerDesc(classDoc);
 		getOrCreatePackageDoc(classDoc, controller);
@@ -129,7 +166,7 @@ public class SpringRESTAPIDoclet {
 		AnnotationDesc controllerReqMappingDoc = getReqeustMappingAnnotation(classDoc);
 		log.debug("  requestmapping:" + controllerReqMappingDoc);
 		if (controllerReqMappingDoc != null) {
-			urlRoot = getStrippedElementValue(controllerReqMappingDoc, "value");
+			urlRoot = getStrippedElementValue(controllerReqMappingDoc, VALUE_ELEMENT_NAME);
 		}
 
 		log.debug("  url.root=" + urlRoot);
@@ -141,7 +178,8 @@ public class SpringRESTAPIDoclet {
 	}
 
 	private static void processMethodDoc(ClassDoc classDoc,
-			ControllerDesc controller, String urlRoot, MethodDoc methodDoc) throws JsonGenerationException, JsonMappingException, IOException {
+			ControllerDesc controller, String urlRoot, MethodDoc methodDoc)
+			throws JsonGenerationException, JsonMappingException, IOException {
 		AnnotationDesc methodReqMapDoc = getReqeustMappingAnnotation(methodDoc);
 		if (methodReqMapDoc != null) {
 			processRequestMappingAnnotation(classDoc, controller, urlRoot,
@@ -151,7 +189,8 @@ public class SpringRESTAPIDoclet {
 
 	private static void processRequestMappingAnnotation(ClassDoc classDoc,
 			ControllerDesc controller, String urlRoot, MethodDoc methodDoc,
-			AnnotationDesc methodReqMapDoc) throws JsonGenerationException, JsonMappingException, IOException {
+			AnnotationDesc methodReqMapDoc) throws JsonGenerationException,
+			JsonMappingException, IOException {
 		AnnotationValue reqMethodValue = getElementAnnotationValue(
 				methodReqMapDoc, "method");
 		if (reqMethodValue != null) {
@@ -165,10 +204,11 @@ public class SpringRESTAPIDoclet {
 
 	private static void processRequestMethod(ClassDoc classDoc,
 			ControllerDesc controller, String urlRoot, MethodDoc methodDoc,
-			AnnotationDesc methodReqMapDoc, Object springReqMethod) throws JsonGenerationException, JsonMappingException, IOException {
+			AnnotationDesc methodReqMapDoc, Object springReqMethod)
+			throws JsonGenerationException, JsonMappingException, IOException {
 
 		String reqMethod = getHttpMethodName("" + springReqMethod);
-		String methodUrl = getStrippedElementValue(methodReqMapDoc, "value");
+		String methodUrl = getStrippedElementValue(methodReqMapDoc, VALUE_ELEMENT_NAME);
 		log.debug("methodUrl=" + methodUrl);
 		if (methodUrl == null) {
 			methodUrl = "";
@@ -190,18 +230,9 @@ public class SpringRESTAPIDoclet {
 		@SuppressWarnings("rawtypes")
 		Class methodReturnType = classMethod.getReturnType();
 
-		java.lang.reflect.Type retType = classMethod.getGenericReturnType();
-		// if(retType instanceof ParameterizedType) {
-		// ParameterizedType pt =
-		// (ParameterizedType)retType;
-		// log.debug("====================="+Arrays.toString(pt.getActualTypeArguments()));
-		// }
 
-	//		String methodReturnTypeJson = jsonGenerator.generateJSONSample(
-	//				methodReturnType, retType);
-		String methodReturnTypeJson = JsonUtil.createJsonSample(methodReturnType);
-		// String methodReturnTypeJson =
-		// ObjectValueGenerator.class2JSONSample(methodReturnType);
+		String methodReturnTypeJson = JsonUtil
+				.createJsonSample(methodReturnType);
 		log.debug("      JSON Response Sample:\n" + methodReturnTypeJson);
 		method.setResponseJSONSample(methodReturnTypeJson);
 		method.setCommentText(methodDoc.getRawCommentText());
@@ -210,7 +241,7 @@ public class SpringRESTAPIDoclet {
 			if (javaDocParameter.typeName().equals("HttpServletRequest")
 					|| javaDocParameter.typeName()
 							.equals("HttpServletResponse")) {
-				// IGnore the HTTP Request/response arguments for the method
+				// Ignore the HTTP Request/response arguments for the method
 				continue;
 			}
 
@@ -222,7 +253,8 @@ public class SpringRESTAPIDoclet {
 
 	private static void addParameter(Doc methodDoc, MethodDesc method,
 			Method classMethod, Parameter javaDocParameter,
-			Parameter[] parameterDocs) throws JsonGenerationException, JsonMappingException, IOException {
+			Parameter[] parameterDocs) throws JsonGenerationException,
+			JsonMappingException, IOException {
 		@SuppressWarnings("rawtypes")
 		Class parameterClass = getParameterClass(classMethod, javaDocParameter,
 				parameterDocs);
@@ -237,7 +269,7 @@ public class SpringRESTAPIDoclet {
 		if (pathVariable != null) {
 			parameter.setPathVariable(true);
 			parameter.setPathVariableValue(getElementValue(pathVariable,
-					"value"));
+					VALUE_ELEMENT_NAME));
 		}
 
 		processRequestParamAnnotation(javaDocParameter, parameter);
@@ -245,37 +277,20 @@ public class SpringRESTAPIDoclet {
 		processRequestBodyAnnotation(method, javaDocParameter, parameterClass,
 				parameter);
 		
-//		String paramDoc = "";
-//		for (Tag tag : methodDoc.tags()) {
-//			log.debug(">>>>>>>>> METHOD TAG: name=" + tag.name() + ", text="
-//					+ tag.text());
-//			if ("@param".equals(tag.name())) {
-//				String txt = tag.text();
-//				int index = txt.indexOf(' ');
-//				if (index != -1) {
-//					String pName = txt.substring(0, index).trim();
-//					if (javaDocParameter.name().equals(pName)) {
-//						paramDoc = ": " + txt.substring(index);
-//						break;
-//					}
-//				}
-//			}
-//		}
-//		log.debug("    paramDoc=" + paramDoc);
 	}
 
 	@SuppressWarnings("rawtypes")
 	private static void processRequestBodyAnnotation(MethodDesc method,
 			Parameter javaDocParameter, Class parameterClass,
-			ParameterDesc parameter) throws JsonGenerationException, JsonMappingException, IOException {
+			ParameterDesc parameter) throws JsonGenerationException,
+			JsonMappingException, IOException {
 		AnnotationDesc requestBodyAnnotation = getRequestBodyAnnotation(javaDocParameter);
 		boolean parameterIsBodyReq = requestBodyAnnotation != null;
 		log.debug("    parameter: " + javaDocParameter.typeName() + " "
 				+ javaDocParameter.name() + " "
 				+ (parameterIsBodyReq ? " BODY REQUEST" : ""));
 		if (parameterIsBodyReq) {
-//			String json = jsonGenerator.generateJSONSample(parameterClass,
-//					parameterClass.getGenericSuperclass());
+			
 			String json = JsonUtil.createJsonSample(parameterClass);
 			log.debug("      JSON Request Sample:\n" + json);
 
@@ -289,15 +304,11 @@ public class SpringRESTAPIDoclet {
 			Parameter javaDocParameter, ParameterDesc parameter) {
 		AnnotationDesc reqParam = getRequestParamAnnotation(javaDocParameter);
 		if (reqParam != null) {
-			// @RequestParam(defaultValue="id",
-			// required=false, value="orderBy")
-			// final
-			// String
-			// orderByColumn,
+		
 			boolean required = false;
-			String requiredStr = getElementValue(reqParam, "required");
-			String reqP_defaultValue = getElementValue(reqParam, "defaultValue");
-			String reqP_value = getElementValue(reqParam, "value");
+			String requiredStr = getElementValue(reqParam, REQUIRED_ELEMENT_NAME);
+			String reqP_defaultValue = getElementValue(reqParam, DEFAULT_VALUE_ELEMENT_NAME);
+			String reqP_value = getElementValue(reqParam, VALUE_ELEMENT_NAME);
 			if (reqP_value == null || reqP_value.length() == 0) {
 				reqP_value = javaDocParameter.name();
 			}
@@ -368,31 +379,31 @@ public class SpringRESTAPIDoclet {
 
 	private static String getHttpMethodName(String reqMethod) {
 		if (reqMethod
-				.equals("org.springframework.web.bind.annotation.RequestMethod.GET")) {
+				.equals(REQUEST_METHOD_GET)) {
 			return "GET";
 		}
 		if (reqMethod
-				.equals("org.springframework.web.bind.annotation.RequestMethod.POST")) {
+				.equals(REQUEST_METHOD_POST)) {
 			return "POST";
 		}
 		if (reqMethod
-				.equals("org.springframework.web.bind.annotation.RequestMethod.DELETE")) {
+				.equals(REQUEST_METHOD_DELETE)) {
 			return "DELETE";
 		}
 		if (reqMethod
-				.equals("org.springframework.web.bind.annotation.RequestMethod.PUT")) {
+				.equals(REQUEST_METHOD_PUT)) {
 			return "PUT";
 		}
 		if (reqMethod
-				.equals("org.springframework.web.bind.annotation.RequestMethod.HEAD")) {
+				.equals(REQUEST_METHOD_HEAD)) {
 			return "HEAD";
 		}
 		if (reqMethod
-				.equals("org.springframework.web.bind.annotation.RequestMethod.OPTIONS")) {
+				.equals(REQUEST_METHOD_OPTIONS)) {
 			return "OPTIONS";
 		}
 		if (reqMethod
-				.equals("org.springframework.web.bind.annotation.RequestMethod.TRACE")) {
+				.equals(REQUEST_METHOD_TRACE)) {
 			return "TRACE";
 		}
 		return "GET";
@@ -467,7 +478,7 @@ public class SpringRESTAPIDoclet {
 
 	private static AnnotationDesc getPathVariableAnnotation(Parameter doc) {
 		for (AnnotationDesc annotation : doc.annotations()) {
-			if ("org.springframework.web.bind.annotation.PathVariable"
+			if (SPRING_PATH_VARIABLE_ANNOTATION_CLASSNAME
 					.equals(annotation.annotationType().qualifiedName())) {
 				return annotation;
 			}
@@ -477,7 +488,7 @@ public class SpringRESTAPIDoclet {
 
 	private static AnnotationDesc getRequestParamAnnotation(Parameter doc) {
 		for (AnnotationDesc annotation : doc.annotations()) {
-			if ("org.springframework.web.bind.annotation.RequestParam"
+			if (SPRING_REQUEST_ANNOTATION_CLASSNAME
 					.equals(annotation.annotationType().qualifiedName())) {
 				return annotation;
 			}
@@ -487,7 +498,7 @@ public class SpringRESTAPIDoclet {
 
 	private static AnnotationDesc getRequestBodyAnnotation(Parameter doc) {
 		for (AnnotationDesc annotation : doc.annotations()) {
-			if ("org.springframework.web.bind.annotation.RequestBody"
+			if (SPRING_REQUEST_BODY_ANNOTATION_CLASSNAME
 					.equals(annotation.annotationType().qualifiedName())) {
 				return annotation;
 			}
@@ -498,7 +509,7 @@ public class SpringRESTAPIDoclet {
 	private static AnnotationDesc getReqeustMappingAnnotation(
 			ProgramElementDoc doc) {
 		for (AnnotationDesc annotation : doc.annotations()) {
-			if ("org.springframework.web.bind.annotation.RequestMapping"
+			if (SPRING_REQUEST_MAPPING_ANNOTATION_CLASSNAME
 					.equals(annotation.annotationType().qualifiedName())) {
 				return annotation;
 			}
@@ -508,7 +519,7 @@ public class SpringRESTAPIDoclet {
 
 	private static AnnotationDesc getControllerAnnotation(ProgramElementDoc doc) {
 		for (AnnotationDesc annotation : doc.annotations()) {
-			if ("org.springframework.stereotype.Controller".equals(annotation
+			if (SPRING_CONTROLLER_ANNOTATION_CLASSNAME.equals(annotation
 					.annotationType().qualifiedName())) {
 				return annotation;
 			}
@@ -518,7 +529,7 @@ public class SpringRESTAPIDoclet {
 
 	static Configuration cfg = new Configuration();
 	static {
-		String templateDir = System.getProperty("template.dir");
+		String templateDir = System.getProperty(SYSARG_TEMPLATE_DIR);
 		setTemplateDir(templateDir);
 	}
 
@@ -527,7 +538,8 @@ public class SpringRESTAPIDoclet {
 			String templateDir = dir;
 			if (templateDir == null) {
 				TemplateLoader loader = new ClassTemplateLoader(
-						SpringRESTAPIDoclet.class, "/com/pehrs/spring/api/doc/templates");
+						SpringRESTAPIDoclet.class,
+						TEMPLATE_RESOURCE_DIR);
 				cfg.setTemplateLoader(loader);
 			} else {
 				cfg.setTemplateLoader(new FileTemplateLoader(new File(
@@ -541,16 +553,16 @@ public class SpringRESTAPIDoclet {
 	static void fmGenerateAPIHtml4Controller(Map<String, Object> datamodel,
 			File targetDir) {
 
-		String classPrefix = System.getProperty("class.prefix", "");
-		String classSuffix = System.getProperty("class.suffix", "");
-		String fileExt = System.getProperty("file.ext", ".html");
+		String classPrefix = System.getProperty(SYSARG_CLASS_PREFIX, SYSARG_CLASS_PREFIX_DEFAULT);
+		String classSuffix = System.getProperty(SYSARG_CLASS_SUFFIX, SYSARG_CLASS_SUFFIX_DEFAULT);
+		String fileExt = System.getProperty(SYSARG_FILE_EXT, SYSARG_FILE_EXT_DEFAULT);
 
 		FileWriter out = null;
 		try {
 			ControllerDesc controller = (ControllerDesc) datamodel
-					.get("controller");
+					.get(DATAMODEL_CONTROLLER);
 
-			String pkgPath = controller.getPkgName().replace('.', '/');
+			String pkgPath = controller.getPkgName().replace(DOT, SLASH);
 
 			File pkgDir = new File(targetDir.getAbsolutePath() + "/" + pkgPath);
 			pkgDir.mkdirs();
@@ -563,8 +575,6 @@ public class SpringRESTAPIDoclet {
 
 			Template tpl = cfg.getTemplate(CONTROLLER_TEMPLATE_FILE);
 
-			// OutputStreamWriter output = new OutputStreamWriter(System.out);
-			
 			tpl.process(datamodel, out);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -587,24 +597,22 @@ public class SpringRESTAPIDoclet {
 	private static void fmGenerateAPIHtml(Map<String, Object> datamodel,
 			File targetDir) {
 
-		String fileExt = System.getProperty("file.ext", ".html");
+		String fileExt = System.getProperty(SYSARG_FILE_EXT, SYSARG_FILE_EXT_DEFAULT);
 
 		FileWriter out = null;
 		try {
 
 			Map<String, PkgDesc> packages = (Map<String, PkgDesc>) datamodel
-					.get("packageMap");
+					.get(DATAMODEL_PACKAGE_MAP);
 			TreeSet<PkgDesc> sortedPkgs = new TreeSet<PkgDesc>(
 					packages.values());
-			datamodel.put("packages", sortedPkgs.iterator());
+			datamodel.put(DATAMODEL_PACKAGES, sortedPkgs.iterator());
 
 			Map<String, ControllerDesc> model = (Map<String, ControllerDesc>) datamodel
-					.get("model");
+					.get(DATAMODEL_MODEL);
 			TreeSet<ControllerDesc> sortedControllers = new TreeSet<ControllerDesc>(
 					model.values());
-			datamodel.put("controllers", sortedControllers.iterator());
-
-			// api_${method.getRequestMappingMethod()}_${method.getName()}
+			datamodel.put(DATAMODEL_CONTROLLERS, sortedControllers.iterator());
 
 			TreeSet<PathInfo> paths = new TreeSet<PathInfo>();
 			for (ControllerDesc controller : model.values()) {
@@ -615,6 +623,7 @@ public class SpringRESTAPIDoclet {
 					String requestPath = urlRoot
 							+ method.getRequestMappingUrl();
 
+					// Create the method id
 					String methodId = "api_" + controller.getJSId() + "_"
 							+ method.getRequestMappingMethod() + "_"
 							+ method.getName();
@@ -635,9 +644,9 @@ public class SpringRESTAPIDoclet {
 			log.debug("    paths=" + paths);
 
 			String path = targetDir.getAbsolutePath() + "/"
-					+ datamodel.get("pom_group_id") + "."
-					+ datamodel.get("pom_artifact_id") + "-"
-					+ datamodel.get("pom_version") + fileExt;
+					+ datamodel.get(DATAMODEL_POM_GROUP_ID) + "."
+					+ datamodel.get(DATAMODEL_POM_ARTIFACT_ID) + "-"
+					+ datamodel.get(DATAMODEL_POM_VERSION) + fileExt;
 			log.debug("Generating " + path);
 			out = new FileWriter(path);
 
